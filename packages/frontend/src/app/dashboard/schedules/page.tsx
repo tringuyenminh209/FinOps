@@ -1,264 +1,209 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Clock,
-  Play,
-  Pause,
-  Timer,
-  CheckCircle2,
-  AlertCircle,
-  CalendarDays,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Clock, Plus, Play, Pause, Moon, Sun, ChevronRight } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn, formatCurrency } from '@/lib/utils';
 
-// ── モックデータ ──
-const DAYS_OF_WEEK = ['月', '火', '水', '木', '金', '土', '日'];
+const dayLabels = ['月', '火', '水', '木', '金', '土', '日'];
 
-interface ScheduleItem {
-  id: string;
-  resourceName: string;
-  resourceType: string;
-  startTime: string;
-  endTime: string;
-  days: number[];
-  isActive: boolean;
-  overrideUntil: string | null;
-  overrideBy: string | null;
-}
-
-const MOCK_SCHEDULES: ScheduleItem[] = [
+const schedules = [
   {
-    id: '1',
-    resourceName: 'staging-web',
-    resourceType: 'EC2',
-    startTime: '09:00',
-    endTime: '18:00',
-    days: [1, 2, 3, 4, 5],
-    isActive: true,
-    overrideUntil: null,
-    overrideBy: null,
+    id: '1', name: 'Staging 自動停止', resources: ['staging-api', 'staging-db'],
+    stopTime: '20:00', startTime: '08:00', days: [0, 1, 2, 3, 4],
+    enabled: true, overrideUntil: null as string | null, monthlySavings: 85000,
   },
   {
-    id: '2',
-    resourceName: 'staging-db',
-    resourceType: 'RDS',
-    startTime: '09:00',
-    endTime: '18:00',
-    days: [1, 2, 3, 4, 5],
-    isActive: true,
-    overrideUntil: null,
-    overrideBy: null,
+    id: '2', name: 'Dev環境 夜間停止', resources: ['dev-frontend'],
+    stopTime: '19:00', startTime: '09:00', days: [0, 1, 2, 3, 4],
+    enabled: true, overrideUntil: null as string | null, monthlySavings: 42000,
   },
   {
-    id: '3',
-    resourceName: 'dev-app',
-    resourceType: 'EC2',
-    startTime: '10:00',
-    endTime: '19:00',
-    days: [1, 2, 3, 4, 5],
-    isActive: true,
-    overrideUntil: '2026-03-02T22:00:00',
-    overrideBy: '田中太郎',
+    id: '3', name: 'ML トレーニング', resources: ['ml-training-01'],
+    stopTime: '22:00', startTime: '06:00', days: [0, 1, 2, 3, 4, 5, 6],
+    enabled: true, overrideUntil: '23:00', monthlySavings: 180000,
   },
   {
-    id: '4',
-    resourceName: 'batch-server',
-    resourceType: 'EC2',
-    startTime: '02:00',
-    endTime: '06:00',
-    days: [1, 2, 3, 4, 5, 6, 7],
-    isActive: false,
-    overrideUntil: null,
-    overrideBy: null,
+    id: '4', name: 'バッチ処理 週末停止', resources: ['batch-worker-01'],
+    stopTime: '18:00 (金)', startTime: '06:00 (月)', days: [5, 6],
+    enabled: false, overrideUntil: null as string | null, monthlySavings: 56000,
   },
 ];
 
-const TYPE_STYLES: Record<string, string> = {
-  EC2: 'bg-orange-500/10 text-orange-400',
-  RDS: 'bg-blue-500/10 text-blue-400',
-};
+function TimelineBar({ stopTime, startTime }: { stopTime: string; startTime: string }) {
+  const parseH = (t: string) => parseInt(t.split(':')[0], 10);
+  const stop = parseH(stopTime);
+  const start = parseH(startTime);
+  const runStart = start < stop ? start : 0;
+  const runEnd = start < stop ? stop : start;
+
+  return (
+    <div className="relative h-6 bg-slate-800/60 rounded-lg overflow-hidden">
+      {Array.from({ length: 24 }, (_, i) => (
+        <div
+          key={i}
+          className="absolute top-0 bottom-0 border-l border-slate-700/20"
+          style={{ left: `${(i / 24) * 100}%` }}
+        />
+      ))}
+      <div
+        className="absolute top-1 bottom-1 rounded bg-emerald-500/25 border border-emerald-500/40"
+        style={{
+          left: `${(runStart / 24) * 100}%`,
+          width: `${((runEnd - runStart) / 24) * 100}%`,
+        }}
+      />
+      <div
+        className="absolute top-1 bottom-1 rounded bg-slate-600/40 border border-slate-500/20"
+        style={{
+          left: `${(runEnd / 24) * 100}%`,
+          width: `${((24 - runEnd + runStart) / 24) * 100}%`,
+        }}
+      />
+      <div className="absolute inset-0 flex items-center justify-between px-2 text-[10px] text-slate-500">
+        <span>0時</span>
+        <span>12時</span>
+        <span>24時</span>
+      </div>
+    </div>
+  );
+}
 
 export default function SchedulesPage() {
-  const [schedules, setSchedules] = useState(MOCK_SCHEDULES);
+  const [filter, setFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
 
-  const toggleActive = (id: string) => {
-    setSchedules((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, isActive: !s.isActive } : s)),
-    );
-  };
+  const filtered = schedules.filter((s) => {
+    if (filter === 'enabled') return s.enabled;
+    if (filter === 'disabled') return !s.enabled;
+    return true;
+  });
 
-  const handleOverride = (id: string) => {
-    const until = new Date();
-    until.setHours(until.getHours() + 2);
-    setSchedules((prev) =>
-      prev.map((s) =>
-        s.id === id
-          ? { ...s, overrideUntil: until.toISOString(), overrideBy: '管理者' }
-          : s,
-      ),
-    );
-  };
-
-  const activeCount = schedules.filter((s) => s.isActive).length;
-  const overrideCount = schedules.filter((s) => s.overrideUntil).length;
+  const totalSavings = schedules.filter(s => s.enabled).reduce((s, x) => s + x.monthlySavings, 0);
 
   return (
     <div className="space-y-6">
-      {/* ヘッダー */}
-      <div>
-        <p className="text-sm text-slate-400">
-          Night-Watch によるリソースの自動起動/停止スケジュールを管理します
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Moon className="h-6 w-6 text-indigo-400" />
+            Night-Watch スケジュール
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">リソースの自動停止・起動スケジュール管理</p>
+        </div>
+        <Button size="md">
+          <Plus className="h-4 w-4" />
+          スケジュール追加
+        </Button>
       </div>
 
-      {/* サマリーカード */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-700 bg-slate-800 p-4 flex items-center gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
-            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">アクティブ</p>
-            <p className="text-xl font-bold text-slate-100">{activeCount}</p>
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-700 bg-slate-800 p-4 flex items-center gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
-            <Timer className="h-5 w-5 text-amber-400" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">オーバーライド中</p>
-            <p className="text-xl font-bold text-slate-100">{overrideCount}</p>
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-700 bg-slate-800 p-4 flex items-center gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-500/10">
-            <CalendarDays className="h-5 w-5 text-teal-400" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">合計スケジュール</p>
-            <p className="text-xl font-bold text-slate-100">{schedules.length}</p>
-          </div>
-        </div>
+      {/* Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="p-4">
+          <p className="text-xs text-slate-500 uppercase tracking-wider">アクティブスケジュール</p>
+          <p className="text-2xl font-bold text-white mt-1 tabular-nums">{schedules.filter(s => s.enabled).length}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-slate-500 uppercase tracking-wider">管理リソース数</p>
+          <p className="text-2xl font-bold text-white mt-1 tabular-nums">{schedules.reduce((s, x) => s + x.resources.length, 0)}台</p>
+        </Card>
+        <Card className="p-4 border-emerald-500/20">
+          <p className="text-xs text-slate-500 uppercase tracking-wider">月間予想削減額</p>
+          <p className="text-2xl font-bold text-emerald-400 mt-1 tabular-nums">{formatCurrency(totalSavings)}</p>
+        </Card>
       </div>
 
-      {/* スケジュール一覧 */}
-      <div className="space-y-4">
-        {schedules.map((schedule) => (
-          <div
-            key={schedule.id}
+      {/* Filter */}
+      <div className="flex items-center gap-2">
+        {(['all', 'enabled', 'disabled'] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
             className={cn(
-              'rounded-xl border bg-slate-800 p-6 transition-colors',
-              schedule.isActive
-                ? 'border-slate-700'
-                : 'border-slate-700/50 opacity-60',
+              'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+              filter === f
+                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/40',
             )}
           >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              {/* 左側: リソース情報 */}
-              <div className="flex items-center gap-4">
-                <div
-                  className={cn(
-                    'flex h-10 w-10 items-center justify-center rounded-lg',
-                    schedule.isActive
-                      ? 'bg-emerald-500/10'
-                      : 'bg-slate-700',
+            {f === 'all' ? 'すべて' : f === 'enabled' ? '有効' : '無効'}
+          </button>
+        ))}
+      </div>
+
+      {/* Schedule Cards */}
+      <div className="space-y-4">
+        {filtered.map((schedule) => (
+          <Card key={schedule.id} className="group">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="font-medium text-white truncate">{schedule.name}</h3>
+                  {schedule.overrideUntil && (
+                    <Badge variant="warning">残業延長中 〜{schedule.overrideUntil}</Badge>
                   )}
-                >
-                  <Clock
-                    className={cn(
-                      'h-5 w-5',
-                      schedule.isActive
-                        ? 'text-emerald-400'
-                        : 'text-slate-500',
-                    )}
-                  />
+                  {!schedule.enabled && <Badge variant="default">無効</Badge>}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold text-slate-100">
-                      {schedule.resourceName}
-                    </h3>
+
+                {/* Day chips */}
+                <div className="flex items-center gap-1 mb-3">
+                  {dayLabels.map((label, i) => (
                     <span
+                      key={i}
                       className={cn(
-                        'inline-flex rounded-md px-2 py-0.5 text-xs font-medium',
-                        TYPE_STYLES[schedule.resourceType] ||
-                          'bg-slate-700 text-slate-300',
+                        'flex h-7 w-7 items-center justify-center rounded-lg text-xs font-medium transition-colors',
+                        schedule.days.includes(i)
+                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                          : 'bg-slate-800/40 text-slate-600',
                       )}
                     >
-                      {schedule.resourceType}
+                      {label}
                     </span>
-                  </div>
-                  <div className="mt-1 flex items-center gap-4 text-xs text-slate-400">
-                    <span>
-                      {schedule.startTime} - {schedule.endTime} JST
-                    </span>
-                    <span className="flex gap-1">
-                      {DAYS_OF_WEEK.map((day, i) => (
-                        <span
-                          key={day}
-                          className={cn(
-                            'inline-flex h-5 w-5 items-center justify-center rounded text-[10px] font-medium',
-                            schedule.days.includes(i + 1)
-                              ? 'bg-emerald-500/20 text-emerald-400'
-                              : 'bg-slate-700 text-slate-600',
-                          )}
-                        >
-                          {day}
-                        </span>
-                      ))}
-                    </span>
-                  </div>
+                  ))}
+                </div>
+
+                {/* Timeline */}
+                <TimelineBar stopTime={schedule.stopTime} startTime={schedule.startTime} />
+
+                {/* Time Labels */}
+                <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+                  <span className="flex items-center gap-1">
+                    <Moon className="h-3 w-3 text-indigo-400" />
+                    停止 {schedule.stopTime}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Sun className="h-3 w-3 text-amber-400" />
+                    起動 {schedule.startTime}
+                  </span>
+                </div>
+
+                {/* Resources */}
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  {schedule.resources.map((r) => (
+                    <span key={r} className="text-xs bg-slate-800/60 text-slate-400 rounded-lg px-2 py-1">{r}</span>
+                  ))}
                 </div>
               </div>
 
-              {/* 右側: アクション */}
-              <div className="flex items-center gap-3">
-                {schedule.overrideUntil && (
-                  <div className="flex items-center gap-1.5 rounded-lg bg-amber-500/10 px-3 py-1.5">
-                    <AlertCircle className="h-3.5 w-3.5 text-amber-400" />
-                    <span className="text-xs font-medium text-amber-400">
-                      残業延長中
-                      {schedule.overrideBy && ` (${schedule.overrideBy})`}
-                    </span>
-                  </div>
-                )}
-
-                {!schedule.overrideUntil && schedule.isActive && (
-                  <button
-                    onClick={() => handleOverride(schedule.id)}
-                    className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 px-3 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/10 transition-colors"
-                  >
-                    <Timer className="h-3.5 w-3.5" />
-                    残業延長
-                  </button>
-                )}
-
-                <button
-                  onClick={() => toggleActive(schedule.id)}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-                    schedule.isActive
-                      ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                      : 'bg-slate-700 text-slate-400 hover:bg-slate-600',
-                  )}
-                >
-                  {schedule.isActive ? (
-                    <>
-                      <Pause className="h-3.5 w-3.5" />
-                      無効化
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-3.5 w-3.5" />
-                      有効化
-                    </>
-                  )}
-                </button>
+              {/* Actions */}
+              <div className="flex lg:flex-col items-center gap-2 lg:items-end shrink-0">
+                <p className="text-lg font-bold text-emerald-400 tabular-nums">{formatCurrency(schedule.monthlySavings)}</p>
+                <p className="text-xs text-slate-500">月間削減</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <Button variant="ghost" size="sm">
+                    {schedule.enabled ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                    {schedule.enabled ? '停止' : '有効化'}
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Clock className="h-3.5 w-3.5" />
+                    延長
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
     </div>

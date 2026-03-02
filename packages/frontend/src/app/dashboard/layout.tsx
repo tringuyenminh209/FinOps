@@ -1,133 +1,95 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import {
-  LayoutDashboard,
-  Cloud,
-  Server,
-  Clock,
-  Wallet,
-  FileText,
-  Bell,
-  Settings,
-  LogOut,
-  ChevronRight,
-} from 'lucide-react';
+import { useEffect } from 'react';
+import { Menu, Bell } from 'lucide-react';
+import { Sidebar } from '@/components/dashboard/sidebar';
+import { useSidebar } from '@/hooks/use-sidebar';
+import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 
-const NAV_ITEMS = [
-  { href: '/dashboard', label: 'ダッシュボード', icon: LayoutDashboard },
-  { href: '/dashboard/accounts', label: 'クラウドアカウント', icon: Cloud },
-  { href: '/dashboard/resources', label: 'リソース', icon: Server },
-  { href: '/dashboard/schedules', label: 'スケジュール', icon: Clock },
-  { href: '/dashboard/costs', label: 'コスト', icon: Wallet },
-  { href: '/dashboard/billing', label: '請求', icon: FileText },
-] as const;
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { collapsed, toggle, mobileOpen, openMobile, closeMobile } = useSidebar();
+  const { user, hydrate } = useAuth();
 
-const PAGE_TITLES: Record<string, string> = {
-  '/dashboard': 'ダッシュボード',
-  '/dashboard/accounts': 'クラウドアカウント',
-  '/dashboard/resources': 'リソース管理',
-  '/dashboard/schedules': 'Night-Watch スケジュール',
-  '/dashboard/costs': 'コスト分析',
-  '/dashboard/billing': '請求管理',
-};
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const pathname = usePathname();
-  const pageTitle = PAGE_TITLES[pathname] || 'ダッシュボード';
+  const initial = user?.displayName?.charAt(0) ?? '管';
 
   return (
-    <div className="flex h-screen bg-slate-900">
-      {/* サイドバー */}
-      <aside className="flex w-64 flex-col bg-slate-950 border-r border-slate-800">
-        {/* ロゴ */}
-        <div className="flex h-16 items-center gap-3 px-6 border-b border-slate-800">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500">
-            <Wallet className="h-4 w-4 text-white" />
-          </div>
-          <span className="text-lg font-bold text-white tracking-tight">
-            FinOps
-          </span>
-        </div>
+    <div className="min-h-screen gradient-mesh">
+      <Sidebar
+        collapsed={collapsed}
+        mobileOpen={mobileOpen}
+        onToggle={toggle}
+        onCloseMobile={closeMobile}
+      />
 
-        {/* ナビゲーション */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {NAV_ITEMS.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== '/dashboard' && pathname.startsWith(item.href));
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-emerald-500/10 text-emerald-400'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200',
-                )}
-              >
-                <item.icon className="h-5 w-5 shrink-0" />
-                {item.label}
-                {isActive && (
-                  <ChevronRight className="ml-auto h-4 w-4 text-emerald-400" />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+      <div
+        className={cn(
+          'transition-all duration-300',
+          collapsed ? 'lg:pl-[var(--sidebar-w-collapsed)]' : 'lg:pl-[var(--sidebar-w)]',
+        )}
+      >
+        {/* Header */}
+        <header className="sticky top-0 z-30 flex h-[var(--header-h)] items-center gap-4 border-b border-slate-700/30 bg-slate-900/60 backdrop-blur-xl px-4 lg:px-8">
+          <button
+            onClick={openMobile}
+            aria-label="メニューを開く"
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-700/40 hover:text-slate-200 lg:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
 
-        {/* ユーザーエリア */}
-        <div className="border-t border-slate-800 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-sm font-medium text-slate-300">
-              管
+          <div className="flex-1" />
+
+          <JstClock />
+
+          <button aria-label="通知" className="relative rounded-xl p-2.5 text-slate-400 hover:bg-slate-700/40 hover:text-slate-200 transition-colors">
+            <Bell className="h-5 w-5" />
+            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
+          </button>
+
+          <div className="flex items-center gap-3 ml-2">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-xs font-bold text-white shadow-lg">
+              {initial}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium text-slate-200">
-                管理者
-              </p>
-              <p className="truncate text-xs text-slate-500">admin@example.com</p>
-            </div>
-            <button className="text-slate-500 hover:text-slate-300 transition-colors">
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* メインエリア */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* ヘッダー */}
-        <header className="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-6">
-          <div>
-            <h1 className="text-lg font-semibold text-slate-100">
-              {pageTitle}
-            </h1>
-            <p className="text-xs text-slate-500">株式会社サンプル</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="relative text-slate-400 hover:text-slate-200 transition-colors">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white">
-                3
+            {user?.displayName && (
+              <span className="hidden md:inline text-sm text-slate-300 font-medium">
+                {user.displayName}
               </span>
-            </button>
-            <button className="text-slate-400 hover:text-slate-200 transition-colors">
-              <Settings className="h-5 w-5" />
-            </button>
+            )}
           </div>
         </header>
 
-        {/* コンテンツ */}
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        {/* Main content */}
+        <main className="p-4 lg:p-8 animate-fade-in">{children}</main>
       </div>
+    </div>
+  );
+}
+
+function JstClock() {
+  const now = new Date();
+  const jst = new Intl.DateTimeFormat('ja-JP', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Tokyo',
+    hour12: false,
+  }).format(now);
+  const dateStr = new Intl.DateTimeFormat('ja-JP', {
+    month: 'short',
+    day: 'numeric',
+    weekday: 'short',
+    timeZone: 'Asia/Tokyo',
+  }).format(now);
+
+  return (
+    <div className="hidden md:flex items-center gap-2 text-xs text-slate-500">
+      <span>{dateStr}</span>
+      <span className="tabular-nums text-slate-400 font-medium">{jst}</span>
+      <span className="text-slate-600">JST</span>
     </div>
   );
 }

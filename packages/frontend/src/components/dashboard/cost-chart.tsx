@@ -1,12 +1,7 @@
 'use client';
 
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from 'recharts';
 import { formatCurrency } from '@/lib/utils';
@@ -15,28 +10,20 @@ interface CostChartProps {
   data: { month: string; cost: number; savings: number }[];
 }
 
-function CustomTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: { value: number; dataKey: string }[];
-  label?: string;
-}) {
+function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
-
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-800 p-3 shadow-xl">
-      <p className="mb-1 text-xs font-medium text-slate-400">{label}</p>
-      {payload.map((entry) => (
-        <p
-          key={entry.dataKey}
-          className="text-sm font-semibold text-slate-100"
-        >
-          {entry.dataKey === 'cost' ? 'コスト' : '削減額'}:{' '}
-          {formatCurrency(entry.value)}
-        </p>
+    <div className="glass rounded-xl p-3 border border-slate-600/30 shadow-2xl">
+      <p className="text-xs text-slate-400 mb-1.5">{label}</p>
+      {payload.map((entry: any) => (
+        <div key={entry.name} className="flex items-center gap-2 text-sm">
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: entry.color }}
+          />
+          <span className="text-slate-400">{entry.name === 'cost' ? 'コスト' : '削減額'}:</span>
+          <span className="tabular-nums font-medium text-white">{formatCurrency(entry.value)}</span>
+        </div>
       ))}
     </div>
   );
@@ -44,55 +31,47 @@ function CustomTooltip({
 
 export function CostChart({ data }: CostChartProps) {
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800 p-6">
-      <h3 className="mb-4 text-sm font-semibold text-slate-100">
-        月間コスト推移
-      </h3>
-      <div className="h-72">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-            <defs>
-              <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="savingsGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-            <XAxis
-              dataKey="month"
-              tick={{ fill: '#94a3b8', fontSize: 12 }}
-              axisLine={{ stroke: '#334155' }}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fill: '#94a3b8', fontSize: 12 }}
-              axisLine={{ stroke: '#334155' }}
-              tickLine={false}
-              tickFormatter={(v: number) => `¥${(v / 10000).toFixed(0)}万`}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Area
-              type="monotone"
-              dataKey="cost"
-              stroke="#10b981"
-              strokeWidth={2}
-              fill="url(#costGradient)"
-            />
-            <Area
-              type="monotone"
-              dataKey="savings"
-              stroke="#14b8a6"
-              strokeWidth={2}
-              fill="url(#savingsGradient)"
-              strokeDasharray="5 5"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
+    <ResponsiveContainer width="100%" height={280}>
+      <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id="gradCost" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="gradSavings" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.2} />
+            <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.1)" />
+        <XAxis
+          dataKey="month"
+          axisLine={false}
+          tickLine={false}
+          tick={{ fill: '#64748b', fontSize: 12 }}
+        />
+        <YAxis
+          axisLine={false}
+          tickLine={false}
+          tick={{ fill: '#64748b', fontSize: 12 }}
+          tickFormatter={(v) => `¥${(v / 10000).toFixed(0)}万`}
+        />
+        <RechartsTooltip content={<CustomTooltip />} />
+        <Area
+          type="monotone"
+          dataKey="cost"
+          stroke="#10b981"
+          strokeWidth={2}
+          fill="url(#gradCost)"
+        />
+        <Area
+          type="monotone"
+          dataKey="savings"
+          stroke="#06b6d4"
+          strokeWidth={2}
+          fill="url(#gradSavings)"
+        />
+      </AreaChart>
+    </ResponsiveContainer>
   );
 }

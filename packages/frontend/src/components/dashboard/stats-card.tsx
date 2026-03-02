@@ -1,59 +1,73 @@
 'use client';
 
 import { type LucideIcon, TrendingUp, TrendingDown } from 'lucide-react';
-import { cn, formatPercent } from '@/lib/utils';
+import { cn, formatCurrency, formatPercent } from '@/lib/utils';
+import { Card } from '@/components/ui/card';
 
 interface StatsCardProps {
-  label: string;
-  value: string;
+  title: string;
+  value: string | number;
+  subtitle?: string;
   trend?: number;
   icon: LucideIcon;
   iconColor?: string;
+  large?: boolean;
+  className?: string;
+  format?: 'currency' | 'number' | 'none';
 }
 
 export function StatsCard({
-  label,
+  title,
   value,
+  subtitle,
   trend,
   icon: Icon,
-  iconColor = 'bg-emerald-500/10 text-emerald-400',
+  iconColor = 'text-emerald-400',
+  large = false,
+  className,
+  format = 'none',
 }: StatsCardProps) {
+  const displayValue = format === 'currency' && typeof value === 'number'
+    ? formatCurrency(value)
+    : String(value);
+
   const isPositive = trend !== undefined && trend >= 0;
-  const TrendIcon = isPositive ? TrendingUp : TrendingDown;
 
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800 p-6">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-400">{label}</span>
-        <div
-          className={cn(
-            'flex h-10 w-10 items-center justify-center rounded-lg',
-            iconColor,
+    <Card className={cn('relative overflow-hidden group', className)}>
+      {/* Subtle gradient glow on hover */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+      <div className="relative">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">{title}</span>
+          <div className={cn('rounded-xl p-2 bg-slate-800/60', iconColor)}>
+            <Icon className="h-4 w-4" />
+          </div>
+        </div>
+
+        <div className={cn(
+          'tabular-nums font-bold text-white animate-count-up',
+          large ? 'text-3xl lg:text-4xl' : 'text-2xl',
+        )}>
+          {displayValue}
+        </div>
+
+        <div className="flex items-center gap-2 mt-2">
+          {trend !== undefined && (
+            <span className={cn(
+              'inline-flex items-center gap-0.5 text-xs font-medium',
+              isPositive ? 'text-emerald-400' : 'text-red-400',
+            )}>
+              {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+              {formatPercent(trend)}
+            </span>
           )}
-        >
-          <Icon className="h-5 w-5" />
+          {subtitle && (
+            <span className="text-xs text-slate-500">{subtitle}</span>
+          )}
         </div>
       </div>
-      <p className="mt-3 text-2xl font-bold text-slate-100">{value}</p>
-      {trend !== undefined && (
-        <div className="mt-2 flex items-center gap-1">
-          <TrendIcon
-            className={cn(
-              'h-4 w-4',
-              isPositive ? 'text-emerald-400' : 'text-red-400',
-            )}
-          />
-          <span
-            className={cn(
-              'text-sm font-medium',
-              isPositive ? 'text-emerald-400' : 'text-red-400',
-            )}
-          >
-            {formatPercent(trend)}
-          </span>
-          <span className="text-sm text-slate-500">前月比</span>
-        </div>
-      )}
-    </div>
+    </Card>
   );
 }

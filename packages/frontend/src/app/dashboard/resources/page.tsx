@@ -1,188 +1,111 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Filter, Download } from 'lucide-react';
-import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { Search, Filter, Download, Server } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { ResourceTable } from '@/components/dashboard/resource-table';
 
-// ── モックデータ ──
-const ALL_RESOURCES = [
-  { id: '1', name: 'web-prod-01', type: 'EC2', account: '本番環境', status: 'running' as const, monthlyCost: 45200, lastSeen: '2026-03-02T10:30:00' },
-  { id: '2', name: 'api-prod-01', type: 'EC2', account: '本番環境', status: 'running' as const, monthlyCost: 38400, lastSeen: '2026-03-02T10:30:00' },
-  { id: '3', name: 'db-primary', type: 'RDS', account: '本番環境', status: 'running' as const, monthlyCost: 128000, lastSeen: '2026-03-02T10:28:00' },
-  { id: '4', name: 'cache-redis', type: 'EC2', account: '本番環境', status: 'running' as const, monthlyCost: 22400, lastSeen: '2026-03-02T10:30:00' },
-  { id: '5', name: 'staging-web', type: 'EC2', account: 'ステージング', status: 'stopped' as const, monthlyCost: 0, lastSeen: '2026-03-01T18:00:00' },
-  { id: '6', name: 'staging-db', type: 'RDS', account: 'ステージング', status: 'stopped' as const, monthlyCost: 0, lastSeen: '2026-03-01T18:00:00' },
-  { id: '7', name: 'dev-app', type: 'EC2', account: '開発環境', status: 'stopped' as const, monthlyCost: 0, lastSeen: '2026-03-01T18:00:00' },
-  { id: '8', name: 'logs-bucket', type: 'S3', account: '本番環境', status: 'running' as const, monthlyCost: 3200, lastSeen: '2026-03-02T10:30:00' },
-  { id: '9', name: 'data-pipeline', type: 'Lambda', account: '本番環境', status: 'running' as const, monthlyCost: 8600, lastSeen: '2026-03-02T10:25:00' },
-  { id: '10', name: 'legacy-app', type: 'EC2', account: '本番環境', status: 'terminated' as const, monthlyCost: 0, lastSeen: '2026-02-15T12:00:00' },
+const resources = [
+  { id: '1', name: 'web-api-prod-01', type: 'EC2 (t3.large)', status: 'running', region: 'ap-northeast-1', monthlyCost: 12500 },
+  { id: '2', name: 'web-api-prod-02', type: 'EC2 (t3.large)', status: 'running', region: 'ap-northeast-1', monthlyCost: 12500 },
+  { id: '3', name: 'batch-worker-01', type: 'EC2 (c5.xlarge)', status: 'running', region: 'ap-northeast-1', monthlyCost: 28000 },
+  { id: '4', name: 'staging-api', type: 'EC2 (t3.medium)', status: 'stopped', region: 'ap-northeast-1', monthlyCost: 5500 },
+  { id: '5', name: 'dev-frontend', type: 'EC2 (t3.small)', status: 'stopped', region: 'ap-northeast-1', monthlyCost: 2800 },
+  { id: '6', name: 'main-db-prod', type: 'RDS (db.r5.large)', status: 'running', region: 'ap-northeast-1', monthlyCost: 58000 },
+  { id: '7', name: 'analytics-db', type: 'RDS (db.r5.xlarge)', status: 'running', region: 'ap-northeast-1', monthlyCost: 95000 },
+  { id: '8', name: 'cache-prod', type: 'ElastiCache (r6g.large)', status: 'running', region: 'ap-northeast-1', monthlyCost: 32000 },
+  { id: '9', name: 'staging-db', type: 'RDS (db.t3.medium)', status: 'stopped', region: 'ap-northeast-1', monthlyCost: 8500 },
+  { id: '10', name: 'ml-training-01', type: 'EC2 (p3.2xlarge)', status: 'stopped', region: 'us-east-1', monthlyCost: 0 },
+  { id: '11', name: 'bastion-host', type: 'EC2 (t3.nano)', status: 'running', region: 'ap-northeast-1', monthlyCost: 800 },
+  { id: '12', name: 'log-aggregator', type: 'EC2 (t3.medium)', status: 'running', region: 'ap-northeast-1', monthlyCost: 7200 },
 ];
 
-const TYPE_OPTIONS = ['すべて', 'EC2', 'RDS', 'S3', 'Lambda'];
-const STATUS_OPTIONS = ['すべて', 'running', 'stopped', 'terminated'];
-const ACCOUNT_OPTIONS = ['すべて', '本番環境', 'ステージング', '開発環境'];
-
-const STATUS_STYLES: Record<string, string> = {
-  running: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  stopped: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  terminated: 'bg-red-500/10 text-red-400 border-red-500/20',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  running: '稼働中',
-  stopped: '停止中',
-  terminated: '終了',
-};
-
-const TYPE_STYLES: Record<string, string> = {
-  EC2: 'bg-orange-500/10 text-orange-400',
-  RDS: 'bg-blue-500/10 text-blue-400',
-  S3: 'bg-green-500/10 text-green-400',
-  Lambda: 'bg-purple-500/10 text-purple-400',
-};
-
 export default function ResourcesPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState('すべて');
-  const [statusFilter, setStatusFilter] = useState('すべて');
-  const [accountFilter, setAccountFilter] = useState('すべて');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
 
-  const filtered = ALL_RESOURCES.filter((r) => {
-    if (searchQuery && !r.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-    if (typeFilter !== 'すべて' && r.type !== typeFilter) return false;
-    if (statusFilter !== 'すべて' && r.status !== statusFilter) return false;
-    if (accountFilter !== 'すべて' && r.account !== accountFilter) return false;
+  const filtered = resources.filter((r) => {
+    if (search && !r.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+    if (typeFilter !== 'all' && !r.type.toLowerCase().includes(typeFilter.toLowerCase())) return false;
     return true;
   });
 
+  const running = resources.filter((r) => r.status === 'running').length;
+  const stopped = resources.filter((r) => r.status === 'stopped').length;
+  const totalCost = resources.reduce((s, r) => s + r.monthlyCost, 0);
+
   return (
     <div className="space-y-6">
-      {/* ツールバー */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* 検索 */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            placeholder="リソース名で検索..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 py-2.5 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">リソース管理</h1>
+          <p className="text-sm text-slate-500 mt-1">全アカウントのクラウドリソース一覧</p>
         </div>
-        <button className="flex items-center gap-2 rounded-lg border border-slate-700 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800 transition-colors">
+        <Button variant="secondary" size="md">
           <Download className="h-4 w-4" />
           CSV出力
-        </button>
+        </Button>
       </div>
 
-      {/* フィルター */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Filter className="h-4 w-4 text-slate-500" />
-        <FilterSelect
-          label="タイプ"
-          options={TYPE_OPTIONS}
-          value={typeFilter}
-          onChange={setTypeFilter}
-        />
-        <FilterSelect
-          label="ステータス"
-          options={STATUS_OPTIONS}
-          value={statusFilter}
-          onChange={setStatusFilter}
-        />
-        <FilterSelect
-          label="アカウント"
-          options={ACCOUNT_OPTIONS}
-          value={accountFilter}
-          onChange={setAccountFilter}
-        />
-        <span className="text-xs text-slate-500">
-          {filtered.length}件 / {ALL_RESOURCES.length}件
-        </span>
+      {/* Summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <p className="text-xs text-slate-500 uppercase tracking-wider">総リソース数</p>
+          <p className="text-xl font-bold text-white mt-1 tabular-nums">{resources.length}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-slate-500 uppercase tracking-wider">稼働中</p>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant="success" dot>{running}台</Badge>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-slate-500 uppercase tracking-wider">停止中</p>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant="default">{stopped}台</Badge>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-slate-500 uppercase tracking-wider">月間合計コスト</p>
+          <p className="text-xl font-bold text-emerald-400 mt-1 tabular-nums">¥{totalCost.toLocaleString()}</p>
+        </Card>
       </div>
 
-      {/* テーブル */}
-      <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-700 text-left">
-                <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-slate-400">リソース名</th>
-                <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-slate-400">タイプ</th>
-                <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-slate-400">アカウント</th>
-                <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-slate-400">ステータス</th>
-                <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-slate-400">月間コスト</th>
-                <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-slate-400">最終確認</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/50">
-              {filtered.map((resource) => (
-                <tr key={resource.id} className="hover:bg-slate-750 transition-colors">
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-200">
-                    {resource.name}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <span className={cn('inline-flex rounded-md px-2 py-1 text-xs font-medium', TYPE_STYLES[resource.type] || 'bg-slate-700 text-slate-300')}>
-                      {resource.type}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-400">
-                    {resource.account}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <span className={cn('inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium', STATUS_STYLES[resource.status])}>
-                      {STATUS_LABELS[resource.status]}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-300">
-                    {formatCurrency(resource.monthlyCost)}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">
-                    {formatDate(resource.lastSeen)}
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-500">
-                    該当するリソースがありません
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1">
+          <Input
+            placeholder="リソース名で検索..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            icon={<Search className="h-4 w-4" />}
+          />
         </div>
+        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="all">全ステータス</option>
+          <option value="running">稼働中</option>
+          <option value="stopped">停止</option>
+        </Select>
+        <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+          <option value="all">全タイプ</option>
+          <option value="EC2">EC2</option>
+          <option value="RDS">RDS</option>
+          <option value="ElastiCache">ElastiCache</option>
+        </Select>
       </div>
-    </div>
-  );
-}
 
-function FilterSelect({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: string[];
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <select
-      aria-label={label}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-300 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-    >
-      {options.map((opt) => (
-        <option key={opt} value={opt}>
-          {label}: {opt}
-        </option>
-      ))}
-    </select>
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          <ResourceTable resources={filtered} pageSize={10} />
+        </CardContent>
+      </Card>
+    </div>
   );
 }

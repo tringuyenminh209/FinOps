@@ -1,107 +1,145 @@
 'use client';
 
-import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { useState } from 'react';
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
-interface ResourceRow {
+interface Resource {
   id: string;
   name: string;
   type: string;
-  status: 'running' | 'stopped' | 'terminated';
+  status: string;
+  region: string;
   monthlyCost: number;
-  lastSeen: string;
 }
 
 interface ResourceTableProps {
-  resources: ResourceRow[];
+  resources: Resource[];
+  pageSize?: number;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  running: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  stopped: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  terminated: 'bg-red-500/10 text-red-400 border-red-500/20',
+type SortDir = 'asc' | 'desc' | null;
+type SortKey = keyof Resource;
+
+const statusVariant = (s: string) => {
+  switch (s) {
+    case 'running': return 'success' as const;
+    case 'stopped': return 'default' as const;
+    case 'error': return 'danger' as const;
+    default: return 'warning' as const;
+  }
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  running: '稼働中',
-  stopped: '停止中',
-  terminated: '終了',
+const statusLabel = (s: string) => {
+  switch (s) {
+    case 'running': return '稼働中';
+    case 'stopped': return '停止';
+    case 'error': return 'エラー';
+    default: return s;
+  }
 };
 
-const TYPE_STYLES: Record<string, string> = {
-  EC2: 'bg-orange-500/10 text-orange-400',
-  RDS: 'bg-blue-500/10 text-blue-400',
-  S3: 'bg-green-500/10 text-green-400',
-  Lambda: 'bg-purple-500/10 text-purple-400',
-  EBS: 'bg-pink-500/10 text-pink-400',
-};
+export function ResourceTable({ resources, pageSize = 10 }: ResourceTableProps) {
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>(null);
+  const [page, setPage] = useState(0);
 
-export function ResourceTable({ resources }: ResourceTableProps) {
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(sortDir === 'asc' ? 'desc' : sortDir === 'desc' ? null : 'asc');
+      if (sortDir === 'desc') setSortKey(null);
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+    setPage(0);
+  };
+
+  const sorted = [...resources].sort((a, b) => {
+    if (!sortKey || !sortDir) return 0;
+    const av = a[sortKey], bv = b[sortKey];
+    const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv));
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  const totalPages = Math.ceil(sorted.length / pageSize);
+  const pageData = sorted.slice(page * pageSize, (page + 1) * pageSize);
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <ChevronsUpDown className="h-3 w-3 text-slate-600" />;
+    return sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />;
+  };
+
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800 overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-700">
-        <h3 className="text-sm font-semibold text-slate-100">リソース一覧</h3>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-slate-700 text-left">
-              <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-slate-400">
-                リソース名
-              </th>
-              <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-slate-400">
-                タイプ
-              </th>
-              <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-slate-400">
-                ステータス
-              </th>
-              <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-slate-400">
-                月間コスト
-              </th>
-              <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-slate-400">
-                最終確認
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-700/50">
-            {resources.map((resource) => (
-              <tr
-                key={resource.id}
-                className="hover:bg-slate-750 transition-colors"
-              >
-                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-200">
-                  {resource.name}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4">
-                  <span
-                    className={cn(
-                      'inline-flex rounded-md px-2 py-1 text-xs font-medium',
-                      TYPE_STYLES[resource.type] || 'bg-slate-700 text-slate-300',
-                    )}
-                  >
-                    {resource.type}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-6 py-4">
-                  <span
-                    className={cn(
-                      'inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium',
-                      STATUS_STYLES[resource.status],
-                    )}
-                  >
-                    {STATUS_LABELS[resource.status]}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-300">
-                  {formatCurrency(resource.monthlyCost)}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">
-                  {formatDate(resource.lastSeen)}
-                </td>
-              </tr>
+    <div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {[
+              { key: 'name' as SortKey, label: 'リソース名' },
+              { key: 'type' as SortKey, label: 'タイプ' },
+              { key: 'status' as SortKey, label: 'ステータス' },
+              { key: 'region' as SortKey, label: 'リージョン' },
+              { key: 'monthlyCost' as SortKey, label: '月間コスト' },
+            ].map(({ key, label }) => (
+              <TableHead key={key}>
+                <button
+                  onClick={() => toggleSort(key)}
+                  className="flex items-center gap-1 hover:text-slate-300 transition-colors"
+                >
+                  {label}
+                  <SortIcon col={key} />
+                </button>
+              </TableHead>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {pageData.map((r) => (
+            <TableRow key={r.id}>
+              <TableCell className="font-medium text-white">{r.name}</TableCell>
+              <TableCell>
+                <span className="text-xs bg-slate-800/60 rounded-lg px-2 py-1">{r.type}</span>
+              </TableCell>
+              <TableCell>
+                <Badge variant={statusVariant(r.status)} dot={r.status === 'running'}>
+                  {statusLabel(r.status)}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-xs">{r.region}</TableCell>
+              <TableCell className="tabular-nums text-emerald-400 font-medium">
+                ¥{r.monthlyCost.toLocaleString()}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4 px-2">
+          <span className="text-xs text-slate-500">
+            {sorted.length}件中 {page * pageSize + 1}-{Math.min((page + 1) * pageSize, sorted.length)}件表示
+          </span>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => setPage(i)}
+                className={cn(
+                  'h-8 w-8 rounded-lg text-xs font-medium transition-colors',
+                  i === page
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'text-slate-500 hover:bg-slate-700/40 hover:text-slate-300',
+                )}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
