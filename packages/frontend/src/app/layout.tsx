@@ -1,5 +1,13 @@
 import type { Metadata } from 'next';
+import { Noto_Sans_JP } from 'next/font/google';
 import './globals.css';
+
+const notoSansJP = Noto_Sans_JP({
+    subsets: ['latin'],
+    weight: ['400', '500', '600', '700'],
+    display: 'swap',
+    variable: '--font-noto-sans-jp',
+});
 
 export const metadata: Metadata = {
     title: 'FinOps Platform - クラウドコスト最適化',
@@ -8,8 +16,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="ja">
-            <body>{children}</body>
+        <html lang="ja" className={notoSansJP.variable}>
+            <body className={notoSansJP.className}>{children}</body>
         </html>
     );
 }

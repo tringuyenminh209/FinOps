@@ -1,0 +1,144 @@
+// 認証サービス — LINE認証、JWT管理、ユーザー管理
+import { sql } from 'drizzle-orm';
+import { db } from '../../db';
+import { createJwt, verifyJwt } from '../../middleware/auth';
+import type { AuthUser, JwtPayload } from '../../middleware/auth';
+import type { User } from '@finops/shared';
+
+// ── LINE プロフィール型定義 ──
+export interface LineProfile {
+  userId: string;
+  displayName: string;
+  pictureUrl?: string;
+  statusMessage?: string;
+}
+
+// ── LINE トークン検証 ──
+// LINE Profile API を呼び出してアクセストークンの有効性を確認
+export async function verifyLineToken(accessToken: string): Promise<LineProfile> {
+  const res = await fetch('https://api.line.me/v2/profile', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new AuthError('LINE_TOKEN_INVALID', `LINEトークンの検証に失敗しました: ${body}`);
+  }
+
+  return res.json() as Promise<LineProfile>;
+}
+
+// ── JWT 生成 ──
+export function generateJwt(payload: { userId: string; orgId: string; role: AuthUser['role'] }): string {
+  return createJwt(payload);
+}
+
+// ── JWT リフレッシュ用トークン生成（有効期限7日） ──
+export function generateRefreshToken(payload: { userId: string; orgId: string; role: AuthUser['role'] }): string {
+  return createJwt(payload, 60 * 60 * 24 * 7);
+}
+
+// ── JWT 検証（re-export） ──
+export { verifyJwt } from '../../middleware/auth';
+
+// ── ユーザー検索・作成 ──
+// LINE プロフィールを基にユーザーを検索、なければ新規作成
+export async function findOrCreateUser(
+  lineProfile: LineProfile,
+  orgId?: string,
+): Promise<Pick<User, 'id' | 'orgId' | 'role' | 'displayName' | 'lineUserId'>> {
+  // 既存ユーザー検索
+  const existing = await db.execute<{
+    id: string;
+    org_id: string;
+    role: AuthUser['role'];
+    display_name: string | null;
+    line_user_id: string | null;
+  }>(
+    sql`SELECT id, org_id, role, display_name, line_user_id
+        FROM users
+        WHERE line_user_id = ${lineProfile.userId}
+        LIMIT 1`,
+  );
+
+  if (existing.length > 0) {
+    const row = existing[0];
+    // 最終ログイン日時を更新
+    await db.execute(
+      sql`UPDATE users SET last_login_at = NOW(), display_name = ${lineProfile.displayName} WHERE id = ${row.id}`,
+    );
+    return {
+      id: row.id,
+      orgId: row.org_id,
+      role: row.role,
+      displayName: row.display_name,
+      lineUserId: row.line_user_id,
+    };
+  }
+
+  // 新規ユーザー作成（組織が指定されていない場合は個人組織を自動生成）
+  const targetOrgId = orgId ?? await createPersonalOrg(lineProfile.displayName);
+
+  const inserted = await db.execute<{ id: string }>(
+    sql`INSERT INTO users (org_id, line_user_id, display_name, role, is_active, preferences, last_login_at, created_at)
+        VALUES (${targetOrgId}, ${lineProfile.userId}, ${lineProfile.displayName}, 'admin', true, '{"lang":"ja","tz":"Asia/Tokyo"}'::jsonb, NOW(), NOW())
+        RETURNING id`,
+  );
+
+  return {
+    id: inserted[0].id,
+    orgId: targetOrgId,
+    role: 'admin',
+    displayName: lineProfile.displayName,
+    lineUserId: lineProfile.userId,
+  };
+}
+
+// ── 個人組織の自動作成 ──
+async function createPersonalOrg(displayName: string): Promise<string> {
+  const result = await db.execute<{ id: string }>(
+    sql`INSERT INTO organizations (name, plan_type, payment_method, settings, created_at, updated_at)
+        VALUES (${`${displayName}の組織`}, 'free', 'stripe', '{}'::jsonb, NOW(), NOW())
+        RETURNING id`,
+  );
+  return result[0].id;
+}
+
+// ── ユーザー取得 ──
+export async function getUserById(userId: string): Promise<Pick<User, 'id' | 'orgId' | 'role' | 'displayName' | 'email' | 'lineUserId' | 'isActive'> | null> {
+  const rows = await db.execute<{
+    id: string;
+    org_id: string;
+    role: AuthUser['role'];
+    display_name: string | null;
+    email: string | null;
+    line_user_id: string | null;
+    is_active: boolean;
+  }>(
+    sql`SELECT id, org_id, role, display_name, email, line_user_id, is_active
+        FROM users WHERE id = ${userId}`,
+  );
+
+  if (rows.length === 0) return null;
+  const row = rows[0];
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    role: row.role,
+    displayName: row.display_name,
+    email: row.email,
+    lineUserId: row.line_user_id,
+    isActive: row.is_active,
+  };
+}
+
+// ── 認証エラークラス ──
+export class AuthError extends Error {
+  constructor(
+    public readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}

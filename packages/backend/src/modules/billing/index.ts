@@ -1,2 +1,1 @@
-// Billing module: Stripe, JCT invoices, bank transfer (Furikomi)
-export { };
+export { billingRoutes } from './routes';

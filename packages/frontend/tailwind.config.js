@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-    content: ['./src/**/*.{ts,tsx}'],
+    content: ['./src/**/*.{ts,tsx,js,jsx}'],
     theme: {
         extend: {
             colors: {
@@ -18,7 +18,7 @@ module.exports = {
                 },
             },
             fontFamily: {
-                sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Noto Sans JP', 'sans-serif'],
+                sans: ['var(--font-noto-sans-jp)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
             },
         },
     },

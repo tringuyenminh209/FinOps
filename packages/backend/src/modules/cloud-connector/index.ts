@@ -1,3 +1,3 @@
 // Module 1: Cloud Connector & Security
-// AWS/Azure account connection, IAM Cross-account Role, resource scanning
-export { };
+// AWS/Azure クロスアカウント接続、IAMロール管理、リソーススキャン
+export { cloudConnectorRoutes } from './routes';
