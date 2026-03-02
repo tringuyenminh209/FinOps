@@ -1,0 +1,48 @@
+{
+    "name": "@finops/backend",
+    "version": "0.1.0",
+    "private": true,
+    "main": "./dist/index.js",
+    "scripts": {
+        "dev": "tsx watch src/index.ts",
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "test": "vitest",
+        "test:unit": "vitest run --dir src",
+        "test:integration": "vitest run --dir tests",
+        "typecheck": "tsc --noEmit",
+        "lint": "eslint src/",
+        "db:migrate": "supabase migration up",
+        "db:seed": "tsx src/db/seed.ts",
+        "clean": "rm -rf dist"
+    },
+    "dependencies": {
+        "@finops/shared": "workspace:*",
+        "hono": "^4.0.0",
+        "@hono/node-server": "^1.0.0",
+        "@hono/zod-validator": "^0.4.0",
+        "drizzle-orm": "^0.36.0",
+        "postgres": "^3.4.0",
+        "zod": "^3.23.0",
+        "@supabase/supabase-js": "^2.45.0",
+        "@aws-sdk/client-ec2": "^3.600.0",
+        "@aws-sdk/client-rds": "^3.600.0",
+        "@aws-sdk/client-s3": "^3.600.0",
+        "@aws-sdk/client-sqs": "^3.600.0",
+        "@aws-sdk/client-sts": "^3.600.0",
+        "@aws-sdk/client-eventbridge": "^3.600.0",
+        "@aws-sdk/client-ssm": "^3.600.0",
+        "@aws-sdk/client-cloudwatch": "^3.600.0",
+        "@line/bot-sdk": "^9.0.0",
+        "openai": "^4.60.0",
+        "stripe": "^17.0.0",
+        "dayjs": "^1.11.0"
+    },
+    "devDependencies": {
+        "typescript": "^5.5.0",
+        "tsx": "^4.19.0",
+        "vitest": "^2.1.0",
+        "drizzle-kit": "^0.28.0",
+        "@types/node": "^22.0.0"
+    }
+}
