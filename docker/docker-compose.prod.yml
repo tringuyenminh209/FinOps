@@ -1,0 +1,85 @@
+version: '3.9'
+
+# ── 本番/ステージング用 Docker Compose ──
+# Usage:
+#   docker compose -f docker/docker-compose.prod.yml up -d
+#   docker compose -f docker/docker-compose.prod.yml down
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: finops-db-prod
+    restart: always
+    ports:
+      - "5432:5432"
+    env_file:
+      - ../.env.production
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-finops}
+      POSTGRES_USER: ${POSTGRES_USER:-finops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-finops}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  backend:
+    build:
+      context: ..
+      dockerfile: packages/backend/Dockerfile
+    container_name: finops-backend-prod
+    restart: always
+    ports:
+      - "3001:3001"
+    env_file:
+      - ../.env.production
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-finops}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-finops}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: packages/frontend/Dockerfile
+    container_name: finops-frontend-prod
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - ../.env.production
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:3001}
+    depends_on:
+      backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: finops-prod-network

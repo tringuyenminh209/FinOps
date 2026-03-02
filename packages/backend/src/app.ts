@@ -27,9 +27,9 @@ app.use('*', cors({
 // ── ヘルスチェック ──
 app.get('/health', (c) => c.json({
     status: 'ok',
-    version: '0.2.0',
+    version: '0.4.0',
     timestamp: new Date().toISOString(),
-    db: 'postgresql://finops-db:5432/finops_dev',
+    environment: process.env.NODE_ENV || 'development',
 }));
 
 // ── API v1 ルート ──

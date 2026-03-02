@@ -17,8 +17,11 @@
         "db:migrate": "pnpm --filter @finops/backend db:migrate",
         "db:seed": "pnpm --filter @finops/backend db:seed",
         "docker:up": "docker compose -f docker/docker-compose.dev.yml up -d",
-        "docker:down": "docker compose -f docker/docker-compose.dev.yml down",
+        "docker:up:all": "docker compose -f docker/docker-compose.dev.yml --profile app up -d --build",
+        "docker:down": "docker compose -f docker/docker-compose.dev.yml --profile app down",
         "docker:logs": "docker compose -f docker/docker-compose.dev.yml logs -f",
+        "docker:prod": "docker compose -f docker/docker-compose.prod.yml up -d --build",
+        "docker:prod:down": "docker compose -f docker/docker-compose.prod.yml down",
         "clean": "turbo clean && rm -rf node_modules",
         "prepare": "husky"
     },
