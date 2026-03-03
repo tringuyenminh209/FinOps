@@ -1,10 +1,11 @@
+import type { ScheduledEvent } from 'aws-lambda';
 import { executeNightWatch } from './service';
 
 /**
  * EventBridge Lambda ハンドラー
  * 定期実行（例: 毎分 or 5分間隔）でNight-Watchサイクルを実行
  */
-export async function handler(event: unknown) {
+export async function handler(event: ScheduledEvent) {
   console.log('Night-Watch スケジューラ実行開始', JSON.stringify(event));
 
   try {

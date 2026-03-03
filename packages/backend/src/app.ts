@@ -9,8 +9,8 @@ import { authRoutes } from './modules/auth';
 import { cloudConnectorRoutes } from './modules/cloud-connector';
 import { nightWatchRoutes } from './modules/night-watch';
 import { billingRoutes } from './modules/billing';
-// Phase 3+
-// import { lineRoutes } from './modules/line';
+// Phase 3
+import { lineRoutes } from './modules/line';
 // Phase 4+
 // import { carbonRoutes } from './modules/greenops';
 // import { aiRoutes } from './modules/ai-advisor';
@@ -27,7 +27,7 @@ app.use('*', cors({
 // ── ヘルスチェック ──
 app.get('/health', (c) => c.json({
     status: 'ok',
-    version: '0.4.0',
+    version: '0.5.0',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
 }));
@@ -38,8 +38,8 @@ app.route('/api/v1/accounts', cloudConnectorRoutes);
 app.route('/api/v1/schedules', nightWatchRoutes);
 app.route('/api/v1/billing', billingRoutes);
 
-// Phase 3+
-// app.route('/api/v1/line', lineRoutes);
+// Phase 3
+app.route('/api/v1/line', lineRoutes);
 // Phase 4+
 // app.route('/api/v1/carbon', carbonRoutes);
 // app.route('/api/v1/ai', aiRoutes);

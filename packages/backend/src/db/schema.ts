@@ -168,6 +168,59 @@ export const billingRecords = pgTable('billing_records', {
   index('idx_billing_records_org_id').on(table.orgId),
 ]);
 
+// ── LINE Config ──
+export const lineConfigs = pgTable('line_configs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull().references(() => organizations.id),
+  lineUserId: varchar('line_user_id', { length: 255 }).notNull(),
+  isEnabled: boolean('is_enabled').notNull().default(true),
+  notifyOnCostAlert: boolean('notify_on_cost_alert').notNull().default(true),
+  notifyOnNightWatch: boolean('notify_on_night_watch').notNull().default(true),
+  notifyOnWeeklyReport: boolean('notify_on_weekly_report').notNull().default(true),
+  weeklyReportDay: integer('weekly_report_day').notNull().default(1),
+  weeklyReportHour: integer('weekly_report_hour').notNull().default(9),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index('idx_line_configs_org_id').on(table.orgId),
+  uniqueIndex('idx_line_configs_line_user_id').on(table.lineUserId),
+]);
+
+// ── LINE Deliveries ──
+export const lineDeliveries = pgTable('line_deliveries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull().references(() => organizations.id),
+  userId: uuid('user_id').notNull().references(() => users.id),
+  lineUserId: varchar('line_user_id', { length: 255 }).notNull(),
+  messageType: varchar('message_type', { length: 50 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('queued'),
+  flexMessagePayload: jsonb('flex_message_payload').default({}).notNull(),
+  errorMessage: text('error_message'),
+  sentAt: timestamp('sent_at').defaultNow().notNull(),
+  deliveredAt: timestamp('delivered_at'),
+}, (table) => [
+  index('idx_line_deliveries_org_id').on(table.orgId),
+  index('idx_line_deliveries_user_id').on(table.userId),
+]);
+
+// ── Weekly Reports ──
+export const weeklyReports = pgTable('weekly_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull().references(() => organizations.id),
+  periodStart: timestamp('period_start').notNull(),
+  periodEnd: timestamp('period_end').notNull(),
+  totalCostJpy: real('total_cost_jpy').notNull().default(0),
+  previousCostJpy: real('previous_cost_jpy').notNull().default(0),
+  costChangePercent: real('cost_change_percent').notNull().default(0),
+  resourceCount: integer('resource_count').notNull().default(0),
+  stoppedHours: integer('stopped_hours').notNull().default(0),
+  savingsJpy: real('savings_jpy').notNull().default(0),
+  topResources: jsonb('top_resources').default([]).notNull(),
+  generatedAt: timestamp('generated_at').defaultNow().notNull(),
+}, (table) => [
+  index('idx_weekly_reports_org_id').on(table.orgId),
+]);
+
 // ── Green Reports ──
 export const greenReports = pgTable('green_reports', {
   id: uuid('id').defaultRandom().primaryKey(),

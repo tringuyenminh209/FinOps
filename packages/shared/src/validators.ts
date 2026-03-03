@@ -104,3 +104,45 @@ export const dateRangeSchema = z
   );
 
 export type DateRangeInput = z.infer<typeof dateRangeSchema>;
+
+// ── LINE Integration ──
+
+export const lineConfigSchema = z.object({
+  isEnabled: z.boolean().default(true),
+  notifyOnCostAlert: z.boolean().default(true),
+  notifyOnNightWatch: z.boolean().default(true),
+  notifyOnWeeklyReport: z.boolean().default(true),
+  weeklyReportDay: z.number().int().min(0).max(6).default(1),
+  weeklyReportHour: z.number().int().min(0).max(23).default(9),
+});
+
+export const updateLineConfigSchema = lineConfigSchema.partial();
+
+export const sendReportSchema = z.object({
+  orgId: uuidSchema.optional(),
+  targetUserIds: z.array(uuidSchema).optional(),
+});
+
+export type LineConfigInput = z.infer<typeof lineConfigSchema>;
+export type UpdateLineConfigInput = z.infer<typeof updateLineConfigSchema>;
+export type SendReportInput = z.infer<typeof sendReportSchema>;
+
+// ── Organization Settings ──
+
+export const updateOrgSettingsSchema = z.object({
+  lineIntegration: z.object({
+    enabled: z.boolean(),
+  }).partial().optional(),
+  notifications: z.object({
+    costAlertThresholdJpy: z.number().int().min(0).max(10_000_000),
+    weeklyReportEnabled: z.boolean(),
+    weeklyReportDay: z.number().int().min(0).max(6),
+    weeklyReportHour: z.number().int().min(0).max(23),
+  }).partial().optional(),
+  nightWatch: z.object({
+    defaultWarningMinutes: z.number().int().min(5).max(60),
+    defaultExtendHours: z.number().int().min(1).max(8),
+  }).partial().optional(),
+});
+
+export type UpdateOrgSettingsInput = z.infer<typeof updateOrgSettingsSchema>;

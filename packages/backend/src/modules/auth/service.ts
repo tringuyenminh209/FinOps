@@ -28,6 +28,37 @@ export async function verifyLineToken(accessToken: string): Promise<LineProfile>
   return res.json() as Promise<LineProfile>;
 }
 
+// ── LINE Authorization Code → Access Token 交換 ──
+export async function exchangeLineCode(
+  code: string,
+  redirectUri: string,
+): Promise<string> {
+  const clientId = process.env.LINE_CLIENT_ID || process.env.NEXT_PUBLIC_LINE_CLIENT_ID || '';
+  const clientSecret = process.env.LINE_CLIENT_SECRET || '';
+
+  const params = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: redirectUri,
+    client_id: clientId,
+    client_secret: clientSecret,
+  });
+
+  const res = await fetch('https://api.line.me/oauth2/v2.1/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new AuthError('LINE_CODE_EXCHANGE_FAILED', `LINE認可コードの交換に失敗しました: ${body}`);
+  }
+
+  const data = await res.json() as { access_token: string };
+  return data.access_token;
+}
+
 // ── JWT 生成 ──
 export function generateJwt(payload: { userId: string; orgId: string; role: AuthUser['role'] }): string {
   return createJwt(payload);

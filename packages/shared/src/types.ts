@@ -129,6 +129,78 @@ export interface Notification {
     readAt: Date | null;
 }
 
+// ── LINE Integration ──
+export type LineDeliveryStatus = 'queued' | 'sent' | 'delivered' | 'failed';
+export type LineMessageType = 'cost_alert' | 'weekly_report' | 'override_confirm' | 'night_watch_action' | 'system';
+
+export interface LineConfig {
+    id: string;
+    orgId: string;
+    lineUserId: string;
+    isEnabled: boolean;
+    notifyOnCostAlert: boolean;
+    notifyOnNightWatch: boolean;
+    notifyOnWeeklyReport: boolean;
+    weeklyReportDay: number;
+    weeklyReportHour: number;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface LineDelivery {
+    id: string;
+    orgId: string;
+    userId: string;
+    lineUserId: string;
+    messageType: LineMessageType;
+    status: LineDeliveryStatus;
+    flexMessagePayload: Record<string, unknown>;
+    errorMessage: string | null;
+    sentAt: Date;
+    deliveredAt: Date | null;
+}
+
+export interface WeeklyReport {
+    id: string;
+    orgId: string;
+    periodStart: Date;
+    periodEnd: Date;
+    totalCostJpy: number;
+    previousCostJpy: number;
+    costChangePercent: number;
+    resourceCount: number;
+    stoppedHours: number;
+    savingsJpy: number;
+    topResources: WeeklyReportResource[];
+    generatedAt: Date;
+}
+
+export interface WeeklyReportResource {
+    resourceId: string;
+    name: string;
+    type: string;
+    costJpy: number;
+    changePercent: number;
+}
+
+// ── Organization Settings ──
+export interface OrgSettings {
+    lineIntegration: {
+        enabled: boolean;
+        webhookUrl: string | null;
+    };
+    notifications: {
+        costAlertThresholdJpy: number;
+        weeklyReportEnabled: boolean;
+        weeklyReportDay: number;
+        weeklyReportHour: number;
+    };
+    nightWatch: {
+        defaultWarningMinutes: number;
+        defaultExtendHours: number;
+    };
+}
+
 // ── Billing ──
 export interface BillingRecord {
     id: string;

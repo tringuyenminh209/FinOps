@@ -4,6 +4,7 @@ import { authMiddleware } from '../../middleware/auth';
 import type { AuthUser } from '../../middleware/auth';
 import {
   verifyLineToken,
+  exchangeLineCode,
   findOrCreateUser,
   generateJwt,
   generateRefreshToken,
@@ -67,6 +68,54 @@ authRoutes.post('/line-login', async (c) => {
   }
 });
 
+// ── POST /line-callback ──
+// LINE認可コードをアクセストークンに交換し、JWT を返す
+authRoutes.post('/line-callback', async (c) => {
+  try {
+    const body = await c.req.json<{ code: string; redirectUri: string; orgId?: string }>();
+
+    if (!body.code || !body.redirectUri) {
+      return c.json(
+        { success: false, error: { code: 'VALIDATION_ERROR', message: '認可コードとリダイレクトURIが必要です' } },
+        400,
+      );
+    }
+
+    const accessToken = await exchangeLineCode(body.code, body.redirectUri);
+    const lineProfile = await verifyLineToken(accessToken);
+    const user = await findOrCreateUser(lineProfile, body.orgId);
+
+    const token = generateJwt({ userId: user.id, orgId: user.orgId, role: user.role });
+    const refreshToken = generateRefreshToken({ userId: user.id, orgId: user.orgId, role: user.role });
+
+    return c.json({
+      success: true,
+      data: {
+        token,
+        refreshToken,
+        user: {
+          id: user.id,
+          orgId: user.orgId,
+          role: user.role,
+          displayName: user.displayName,
+        },
+      },
+    });
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return c.json(
+        { success: false, error: { code: err.code, message: err.message } },
+        401,
+      );
+    }
+    console.error('LINE callback error:', err);
+    return c.json(
+      { success: false, error: { code: 'AUTH_FAILED', message: 'LINE認証処理中にエラーが発生しました' } },
+      500,
+    );
+  }
+});
+
 // ── POST /refresh ──
 // リフレッシュトークンで新しい JWT を発行
 authRoutes.post('/refresh', async (c) => {
@@ -89,7 +138,7 @@ authRoutes.post('/refresh', async (c) => {
     }
 
     // ユーザーがまだ有効か確認
-    const user = await getUserById(payload.userId);
+    const user = await getUserById(payload.sub);
     if (!user || !user.isActive) {
       return c.json(
         { success: false, error: { code: 'USER_DISABLED', message: 'ユーザーアカウントが無効です' } },

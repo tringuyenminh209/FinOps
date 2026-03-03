@@ -61,6 +61,32 @@ export const PLAN_LIMITS = {
     },
 } as const;
 
+// ── LINE Messaging ──
+export const LINE_API = {
+    MESSAGING_BASE: 'https://api.line.me/v2/bot',
+    PUSH_MESSAGE: 'https://api.line.me/v2/bot/message/push',
+    REPLY_MESSAGE: 'https://api.line.me/v2/bot/message/reply',
+    PROFILE: 'https://api.line.me/v2/bot/profile',
+} as const;
+
+export const LINE_FLEX_COLORS = {
+    primary: '#10B981',
+    secondary: '#14B8A6',
+    danger: '#EF4444',
+    warning: '#F59E0B',
+    muted: '#94A3B8',
+    background: '#0F172A',
+    surface: '#1E293B',
+    text: '#E2E8F0',
+    textMuted: '#94A3B8',
+} as const;
+
+export const WEEKLY_REPORT_DEFAULTS = {
+    dayOfWeek: 1,
+    hourJst: 9,
+    timezone: 'Asia/Tokyo',
+} as const;
+
 // ── API Paths ──
 export const API_PATHS = {
     AUTH_LOGIN: '/api/v1/auth/line-login',
@@ -73,5 +99,12 @@ export const API_PATHS = {
     AI: '/api/v1/ai',
     BILLING: '/api/v1/billing',
     LINE_WEBHOOK: '/api/v1/line/webhook',
+    LINE_CONFIG: '/api/v1/line/config',
+    LINE_SEND_REPORT: '/api/v1/line/send-report',
+    LINE_DELIVERY_STATUS: '/api/v1/line/delivery-status',
     ORG: '/api/v1/org',
+    ORG_SETTINGS: '/api/v1/org/settings',
+    REPORTS: '/api/v1/reports',
+    REPORTS_WEEKLY: '/api/v1/reports/weekly',
+    NOTIFICATIONS: '/api/v1/notifications',
 } as const;

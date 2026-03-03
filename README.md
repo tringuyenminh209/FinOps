@@ -29,22 +29,41 @@
 ```
 FinOps/
 ├── packages/
-│   ├── frontend/          # Next.js App Router
-│   ├── backend/           # Hono API (Lambda)
-│   │   └── src/modules/
-│   │       ├── cloud-connector/
-│   │       ├── night-watch/
-│   │       ├── greenops/
-│   │       ├── ai-advisor/
-│   │       ├── line/
-│   │       ├── auth/
-│   │       └── billing/
-│   └── shared/            # Shared types & constants
-├── docker/                # Docker Compose configs
-├── .github/workflows/     # CI/CD pipelines
+│   ├── frontend/          # Next.js 14 App Router (13ルート)
+│   │   └── src/
+│   │       ├── app/
+│   │       │   ├── (auth)/          # ログイン, 新規登録
+│   │       │   ├── dashboard/       # ダッシュボード (9サブページ)
+│   │       │   │   ├── accounts/
+│   │       │   │   ├── resources/
+│   │       │   │   ├── schedules/
+│   │       │   │   ├── costs/
+│   │       │   │   ├── reports/         # 週次レポート
+│   │       │   │   ├── notifications/   # LINE通知管理
+│   │       │   │   ├── billing/
+│   │       │   │   └── settings/        # 設定
+│   │       │   └── page.tsx         # ランディング
+│   │       ├── components/          # UI/Dashboard コンポーネント
+│   │       ├── hooks/               # Zustand, sidebar
+│   │       └── lib/                 # API client, utils
+│   ├── backend/           # Hono API (28エンドポイント)
+│   │   └── src/
+│   │       ├── modules/
+│   │       │   ├── auth/            # 3 API
+│   │       │   ├── cloud-connector/ # 6 API
+│   │       │   ├── night-watch/     # 7 API
+│   │       │   ├── billing/         # 6 API
+│   │       │   ├── line/            # 6 API (Webhook, 通知, レポート)
+│   │       │   ├── greenops/        # Phase 4
+│   │       │   └── ai-advisor/      # Phase 4
+│   │       ├── db/                  # Drizzle ORM (14テーブル)
+│   │       └── middleware/          # JWT認証, RBAC, テナント分離
+│   └── shared/            # 18型定義, 11バリデーション, 暗号化, 定数
+├── docker/                # Docker Compose (dev + prod)
+├── docs/                  # 進捗報告, 設計書
 ├── .env.example           # Environment template
 ├── turbo.json             # Turborepo config
-└── package.json           # Root workspace
+└── package.json           # Root workspace (pnpm 9+)
 ```
 
 ## Quick Start
