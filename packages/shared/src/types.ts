@@ -218,6 +218,51 @@ export interface BillingRecord {
     createdAt: Date;
 }
 
+// ── GreenOps ──
+export interface GreenReport {
+    id: string;
+    orgId: string;
+    reportMonth: string; // "2026-03"
+    totalCarbonKg: number;
+    totalPowerKwh: number;
+    totalCostJpy: number;
+    savingsCarbonKg: number;
+    savingsCostJpy: number;
+    greenScore: number; // 0-100
+    details: GreenReportDetail[];
+    createdAt: Date;
+}
+
+export interface GreenReportDetail {
+    region: string;
+    provider: string;
+    carbonKg: number;
+    powerKwh: number;
+    resourceCount: number;
+}
+
+export type GreenScoreGrade = 'S' | 'A' | 'B' | 'C' | 'D';
+
+export interface GreenScore {
+    score: number; // 0-100
+    grade: GreenScoreGrade;
+    totalCarbonKg: number;
+    baselineCarbonKg: number;
+    reductionPercent: number;
+}
+
+export interface CarbonCalculation {
+    resourceId: string;
+    resourceName: string;
+    resourceType: string;
+    region: string;
+    provider: string;
+    powerKwh: number;
+    carbonKg: number;
+    emissionFactor: number;
+    pue: number;
+}
+
 // ── API Responses ──
 export interface ApiResponse<T = unknown> {
     success: boolean;

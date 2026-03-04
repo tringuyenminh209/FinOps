@@ -61,6 +61,39 @@ export const PLAN_LIMITS = {
     },
 } as const;
 
+// ── GreenOps ──
+
+/** リソースタイプ別推定電力消費量 (kWh/hour) */
+export const RESOURCE_POWER_USAGE: Record<string, number> = {
+    ec2: 0.5,
+    rds: 0.8,
+    ecs: 0.3,
+    lambda: 0.01,
+    s3: 0.02,
+    ebs: 0.05,
+    vm: 0.5,
+    sql: 0.8,
+    functions: 0.01,
+    blob: 0.02,
+};
+
+/** Green-score グレード閾値 (score >= threshold → grade) */
+export const GREEN_SCORE_THRESHOLDS = [
+    { min: 80, grade: 'S' as const },
+    { min: 60, grade: 'A' as const },
+    { min: 40, grade: 'B' as const },
+    { min: 20, grade: 'C' as const },
+    { min: 0, grade: 'D' as const },
+] as const;
+
+/** スコアからグレードを算出 */
+export function getGreenGrade(score: number): 'S' | 'A' | 'B' | 'C' | 'D' {
+    for (const t of GREEN_SCORE_THRESHOLDS) {
+        if (score >= t.min) return t.grade;
+    }
+    return 'D';
+}
+
 // ── LINE Messaging ──
 export const LINE_API = {
     MESSAGING_BASE: 'https://api.line.me/v2/bot',
@@ -96,6 +129,9 @@ export const API_PATHS = {
     SCHEDULES: '/api/v1/schedules',
     COSTS: '/api/v1/costs',
     CARBON: '/api/v1/carbon',
+    CARBON_REPORT: '/api/v1/carbon/report',
+    CARBON_GREEN_SCORE: '/api/v1/carbon/green-score',
+    CARBON_CALCULATE: '/api/v1/carbon/calculate',
     AI: '/api/v1/ai',
     BILLING: '/api/v1/billing',
     LINE_WEBHOOK: '/api/v1/line/webhook',

@@ -11,8 +11,9 @@ import { nightWatchRoutes } from './modules/night-watch';
 import { billingRoutes } from './modules/billing';
 // Phase 3
 import { lineRoutes } from './modules/line';
+// Module 3: GreenOps
+import { carbonRoutes } from './modules/greenops';
 // Phase 4+
-// import { carbonRoutes } from './modules/greenops';
 // import { aiRoutes } from './modules/ai-advisor';
 
 export const app = new Hono();
@@ -27,7 +28,7 @@ app.use('*', cors({
 // ── ヘルスチェック ──
 app.get('/health', (c) => c.json({
     status: 'ok',
-    version: '0.5.0',
+    version: '0.7.0',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
 }));
@@ -40,8 +41,9 @@ app.route('/api/v1/billing', billingRoutes);
 
 // Phase 3
 app.route('/api/v1/line', lineRoutes);
+// Module 3: GreenOps
+app.route('/api/v1/carbon', carbonRoutes);
 // Phase 4+
-// app.route('/api/v1/carbon', carbonRoutes);
 // app.route('/api/v1/ai', aiRoutes);
 
 // ── 404 ──

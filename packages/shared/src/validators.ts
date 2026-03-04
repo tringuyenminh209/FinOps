@@ -146,3 +146,17 @@ export const updateOrgSettingsSchema = z.object({
 });
 
 export type UpdateOrgSettingsInput = z.infer<typeof updateOrgSettingsSchema>;
+
+// ── GreenOps ──
+
+export const carbonCalculateSchema = z.object({
+  orgId: z.string().uuid().optional(),
+});
+
+/** YYYY-MM 形式の月指定 */
+export const greenReportQuerySchema = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, '月はYYYY-MM形式で入力してください'),
+});
+
+export type CarbonCalculateInput = z.infer<typeof carbonCalculateSchema>;
+export type GreenReportQueryInput = z.infer<typeof greenReportQuerySchema>;
