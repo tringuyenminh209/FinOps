@@ -10,6 +10,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/backend/package.json ./packages/backend/
 COPY packages/shared/package.json ./packages/shared/
 
+RUN echo "node-linker=hoisted" >> .npmrc
 RUN pnpm install --frozen-lockfile --filter @finops/backend --filter @finops/shared
 
 # Stage 2: Build

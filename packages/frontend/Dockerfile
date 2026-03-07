@@ -9,7 +9,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/frontend/package.json ./packages/frontend/
 COPY packages/shared/package.json ./packages/shared/
 
-RUN echo "shamefully-hoist=true" >> .npmrc
+RUN echo "node-linker=hoisted" >> .npmrc
 RUN pnpm install --frozen-lockfile --filter @finops/frontend --filter @finops/shared
 
 # Stage 2: Build
