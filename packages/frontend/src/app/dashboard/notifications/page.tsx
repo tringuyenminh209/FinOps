@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { apiGet } from '@/lib/api';
+import type { ApiResponse } from '@finops/shared';
 import {
   Bell, MessageSquare, CheckCircle2, XCircle, Clock,
   Filter, Search, Send, ToggleLeft, ToggleRight,
@@ -68,18 +70,39 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [settings, setSettings] = useState(defaultSettings);
+  const [deliveries, setDeliveries] = useState<Delivery[]>(mockDeliveries);
 
-  const filtered = mockDeliveries.filter((d) => {
+  useEffect(() => {
+    apiGet<ApiResponse<{ deliveries: any[] }>>('/api/v1/line/delivery-status?limit=50')
+      .then((res) => {
+        if (res.success && res.data && (res.data.deliveries?.length ?? 0) > 0) {
+          const mapped = res.data.deliveries!.map((d: any) => ({
+            id: d.id,
+            messageType: d.messageType as MessageType,
+            status: d.status as DeliveryStatus,
+            lineUserId: d.lineUserId,
+            displayName: d.displayName ?? d.lineUserId,
+            sentAt: d.sentAt ?? d.createdAt,
+            deliveredAt: d.deliveredAt ?? null,
+            errorMessage: d.errorMessage ?? null,
+          }));
+          setDeliveries(mapped);
+        }
+      })
+      .catch(() => {/* fallback to mock */});
+  }, []);
+
+  const filtered = deliveries.filter((d) => {
     if (filter !== 'all' && d.messageType !== filter) return false;
     if (search && !d.displayName.includes(search) && !d.messageType.includes(search)) return false;
     return true;
   });
 
   const stats = {
-    total: mockDeliveries.length,
-    delivered: mockDeliveries.filter((d) => d.status === 'delivered').length,
-    failed: mockDeliveries.filter((d) => d.status === 'failed').length,
-    queued: mockDeliveries.filter((d) => d.status === 'queued').length,
+    total: deliveries.length,
+    delivered: deliveries.filter((d) => d.status === 'delivered').length,
+    failed: deliveries.filter((d) => d.status === 'failed').length,
+    queued: deliveries.filter((d) => d.status === 'queued').length,
   };
 
   const toggleSetting = (key: string) => {

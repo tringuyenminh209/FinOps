@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Zap, Loader2, AlertCircle } from 'lucide-react';
 import { apiPost } from '@/lib/api';
@@ -14,7 +14,7 @@ interface CallbackResponse {
   };
 }
 
-export default function LineCallbackPage() {
+function LineCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -27,13 +27,13 @@ export default function LineCallbackPage() {
 
       if (errorParam) {
         setError('LINE認証がキャンセルされました');
-        setTimeout(() => router.push('/login'), 2000);
+        setTimeout(() => router.push('/login' as any), 2000);
         return;
       }
 
       if (!code) {
         setError('認可コードが見つかりません');
-        setTimeout(() => router.push('/login'), 2000);
+        setTimeout(() => router.push('/login' as any), 2000);
         return;
       }
 
@@ -41,7 +41,7 @@ export default function LineCallbackPage() {
       if (state && savedState && state !== savedState) {
         setError('セキュリティ検証に失敗しました。もう一度お試しください');
         sessionStorage.removeItem('line_state');
-        setTimeout(() => router.push('/login'), 2000);
+        setTimeout(() => router.push('/login' as any), 2000);
         return;
       }
       sessionStorage.removeItem('line_state');
@@ -59,7 +59,7 @@ export default function LineCallbackPage() {
         router.push('/dashboard');
       } catch {
         setError('LINE認証に失敗しました。もう一度お試しください');
-        setTimeout(() => router.push('/login'), 3000);
+        setTimeout(() => router.push('/login' as any), 3000);
       }
     }
 
@@ -89,5 +89,17 @@ export default function LineCallbackPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function LineCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen gradient-mesh flex items-center justify-center">
+        <Loader2 className="h-6 w-6 text-emerald-400 animate-spin" />
+      </div>
+    }>
+      <LineCallbackContent />
+    </Suspense>
   );
 }

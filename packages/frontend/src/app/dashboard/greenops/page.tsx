@@ -1,54 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line,
 } from 'recharts';
 import {
-  Leaf, Zap, ArrowDown, ArrowUp, FileText, Download, Flame, BarChart3,
+  Leaf, Zap, ArrowDown, ArrowUp, FileText, Download, Flame, BarChart3, RefreshCw,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Select } from '@/components/ui/select';
-import { formatCO2, formatCurrency, formatNumber, cn } from '@/lib/utils';
-import { EMISSION_FACTORS, GREEN_SCORE_THRESHOLDS } from '@finops/shared';
+import { Button } from '@/components/ui/button';
+import { formatCO2, formatNumber, cn } from '@/lib/utils';
+import { apiGet, apiPost } from '@/lib/api';
+import { EMISSION_FACTORS, getGreenGrade } from '@finops/shared';
+import type { GreenReport, GreenScore, GreenReportDetail, ApiResponse } from '@finops/shared';
 
-// ── デモデータ ──
+// ── デモデータ (API未接続 or フリープラン時のフォールバック) ──
 
-const carbonTrend = [
-  { month: '9月', carbon: 1280, power: 3200 },
-  { month: '10月', carbon: 1150, power: 2900 },
-  { month: '11月', carbon: 980, power: 2500 },
-  { month: '12月', carbon: 870, power: 2200 },
-  { month: '1月', carbon: 750, power: 1900 },
-  { month: '2月', carbon: 640, power: 1600 },
+const DEMO_REPORTS: GreenReport[] = [
+  { id: '1', orgId: '', reportMonth: '2026-02', totalCarbonKg: 640, totalPowerKwh: 1600, totalCostJpy: 320000, savingsCarbonKg: 110, savingsCostJpy: 55000, greenScore: 78, details: [{ region: 'ap-northeast-1', provider: 'aws', carbonKg: 420, powerKwh: 1050, resourceCount: 8 }, { region: 'ap-northeast-3', provider: 'aws', carbonKg: 130, powerKwh: 325, resourceCount: 3 }, { region: 'japaneast', provider: 'azure', carbonKg: 60, powerKwh: 150, resourceCount: 2 }, { region: 'japanwest', provider: 'azure', carbonKg: 30, powerKwh: 75, resourceCount: 1 }], createdAt: new Date() },
+  { id: '2', orgId: '', reportMonth: '2026-01', totalCarbonKg: 750, totalPowerKwh: 1900, totalCostJpy: 375000, savingsCarbonKg: 95, savingsCostJpy: 47500, greenScore: 72, details: [], createdAt: new Date() },
+  { id: '3', orgId: '', reportMonth: '2025-12', totalCarbonKg: 870, totalPowerKwh: 2200, totalCostJpy: 435000, savingsCarbonKg: 80, savingsCostJpy: 40000, greenScore: 63, details: [], createdAt: new Date() },
+  { id: '4', orgId: '', reportMonth: '2025-11', totalCarbonKg: 980, totalPowerKwh: 2500, totalCostJpy: 490000, savingsCarbonKg: 60, savingsCostJpy: 30000, greenScore: 55, details: [], createdAt: new Date() },
+  { id: '5', orgId: '', reportMonth: '2025-10', totalCarbonKg: 1150, totalPowerKwh: 2900, totalCostJpy: 575000, savingsCarbonKg: 40, savingsCostJpy: 20000, greenScore: 42, details: [], createdAt: new Date() },
+  { id: '6', orgId: '', reportMonth: '2025-09', totalCarbonKg: 1280, totalPowerKwh: 3200, totalCostJpy: 640000, savingsCarbonKg: 20, savingsCostJpy: 10000, greenScore: 35, details: [], createdAt: new Date() },
 ];
 
-const scoreTrend = [
-  { month: '9月', score: 35 },
-  { month: '10月', score: 42 },
-  { month: '11月', score: 55 },
-  { month: '12月', score: 63 },
-  { month: '1月', score: 72 },
-  { month: '2月', score: 78 },
-];
-
-const regionBreakdown = [
-  { name: 'ap-northeast-1', value: 420, color: '#10b981' },
-  { name: 'ap-northeast-3', value: 130, color: '#06b6d4' },
-  { name: 'japaneast', value: 60, color: '#8b5cf6' },
-  { name: 'japanwest', value: 30, color: '#f59e0b' },
-];
-
-const reportHistory = [
-  { month: '2026-02', carbonKg: 640, powerKwh: 1600, score: 78, grade: 'A' },
-  { month: '2026-01', carbonKg: 750, powerKwh: 1900, score: 72, grade: 'A' },
-  { month: '2025-12', carbonKg: 870, powerKwh: 2200, score: 63, grade: 'A' },
-  { month: '2025-11', carbonKg: 980, powerKwh: 2500, score: 55, grade: 'B' },
-  { month: '2025-10', carbonKg: 1150, powerKwh: 2900, score: 42, grade: 'B' },
-  { month: '2025-09', carbonKg: 1280, powerKwh: 3200, score: 35, grade: 'C' },
-];
+const REGION_COLORS = ['#10b981', '#06b6d4', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899'];
 
 const gradeColors: Record<string, string> = {
   S: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
@@ -62,10 +41,7 @@ function GradeDisplay({ score, grade }: { score: number; grade: string }) {
   return (
     <div className="flex items-center gap-3">
       <span className="text-3xl font-bold text-white tabular-nums">{score}</span>
-      <span className={cn(
-        'text-lg font-bold px-2.5 py-0.5 rounded-lg border',
-        gradeColors[grade] ?? gradeColors['D'],
-      )}>
+      <span className={cn('text-lg font-bold px-2.5 py-0.5 rounded-lg border', gradeColors[grade] ?? gradeColors['D'])}>
         {grade}
       </span>
     </div>
@@ -95,15 +71,102 @@ function handlePdfPrint(month: string) {
 }
 
 export default function GreenOpsPage() {
-  const [selectedMonth] = useState('2026-02');
+  const [reports, setReports] = useState<GreenReport[]>([]);
+  const [greenScore, setGreenScore] = useState<GreenScore | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [calculating, setCalculating] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
 
-  const currentCarbon = 640;
-  const prevCarbon = 750;
-  const carbonDiff = ((currentCarbon - prevCarbon) / prevCarbon) * 100;
-  const currentPower = 1600;
-  const savingsCarbon = 110;
-  const currentScore = 78;
-  const currentGrade = 'A';
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [reportsRes, scoreRes] = await Promise.all([
+        apiGet<ApiResponse<GreenReport[]>>('/api/v1/carbon/report?limit=12'),
+        apiGet<ApiResponse<GreenScore>>('/api/v1/carbon/green-score'),
+      ]);
+
+      if (reportsRes.success && reportsRes.data && reportsRes.data.length > 0) {
+        setReports(reportsRes.data);
+      } else {
+        setReports(DEMO_REPORTS);
+        setIsDemo(true);
+      }
+
+      if (scoreRes.success && scoreRes.data) {
+        setGreenScore(scoreRes.data);
+      }
+    } catch {
+      // フリープラン or API未接続: デモデータ表示
+      setReports(DEMO_REPORTS);
+      setIsDemo(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const handleCalculate = async () => {
+    setCalculating(true);
+    try {
+      await apiPost('/api/v1/carbon/calculate', {});
+      await apiPost('/api/v1/carbon/report/generate', { month: new Date().toISOString().slice(0, 7) });
+      await fetchData();
+    } catch (err) {
+      console.error('Calculate error:', err);
+    } finally {
+      setCalculating(false);
+    }
+  };
+
+  // 表示用データ導出
+  const displayReports = reports.length > 0 ? reports : DEMO_REPORTS;
+  const latestReport = displayReports[0];
+  const prevReport = displayReports[1];
+
+  const currentCarbon = latestReport?.totalCarbonKg ?? 0;
+  const prevCarbon = prevReport?.totalCarbonKg ?? 0;
+  const carbonDiff = prevCarbon > 0 ? ((currentCarbon - prevCarbon) / prevCarbon) * 100 : 0;
+  const currentPower = latestReport?.totalPowerKwh ?? 0;
+  const savingsCarbon = latestReport?.savingsCarbonKg ?? 0;
+  const currentScore = greenScore?.score ?? latestReport?.greenScore ?? 0;
+  const currentGrade = greenScore?.grade ?? getGreenGrade(currentScore);
+
+  // チャートデータ変換
+  const carbonTrend = [...displayReports].reverse().slice(-6).map(r => ({
+    month: r.reportMonth.replace(/^\d{4}-/, '') + '月',
+    carbon: r.totalCarbonKg,
+    power: r.totalPowerKwh,
+  }));
+
+  const scoreTrend = [...displayReports].reverse().slice(-6).map(r => ({
+    month: r.reportMonth.replace(/^\d{4}-/, '') + '月',
+    score: r.greenScore,
+  }));
+
+  const regionBreakdown = (latestReport?.details ?? [] as GreenReportDetail[]).map((d: GreenReportDetail, i: number) => ({
+    name: d.region,
+    value: d.carbonKg,
+    color: REGION_COLORS[i % REGION_COLORS.length],
+  }));
+
+  const displayRegions = regionBreakdown.length > 0 ? regionBreakdown : [
+    { name: 'ap-northeast-1', value: 420, color: '#10b981' },
+    { name: 'ap-northeast-3', value: 130, color: '#06b6d4' },
+    { name: 'japaneast', value: 60, color: '#8b5cf6' },
+    { name: 'japanwest', value: 30, color: '#f59e0b' },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+          <p className="text-sm text-slate-500">GreenOpsデータを読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -116,11 +179,20 @@ export default function GreenOpsPage() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">CO2排出量分析とGreen-scoreダッシュボード</p>
         </div>
-        <Select className="w-auto">
-          <option>2026年2月</option>
-          <option>2026年1月</option>
-          <option>2025年12月</option>
-        </Select>
+        <div className="flex items-center gap-2">
+          {isDemo && (
+            <Badge variant="outline" className="text-xs">デモデータ</Badge>
+          )}
+          <Button
+            variant="secondary"
+            onClick={handleCalculate}
+            disabled={calculating}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={cn('h-4 w-4', calculating && 'animate-spin')} />
+            {calculating ? '計算中...' : 'CO2再計算'}
+          </Button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -138,7 +210,7 @@ export default function GreenOpsPage() {
               <ArrowUp className="h-3 w-3 text-red-400" />
             )}
             <span className={`text-xs font-medium ${carbonDiff < 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {carbonDiff.toFixed(1)}% 前月比
+              {Math.abs(carbonDiff).toFixed(1)}% 前月比
             </span>
           </div>
         </Card>
@@ -148,7 +220,9 @@ export default function GreenOpsPage() {
             <p className="text-xs text-slate-500 uppercase tracking-wider">月間電力消費量</p>
             <Zap className="h-4 w-4 text-yellow-400" />
           </div>
-          <p className="text-3xl font-bold text-white tabular-nums">{formatNumber(currentPower)} <span className="text-lg text-slate-500">kWh</span></p>
+          <p className="text-3xl font-bold text-white tabular-nums">
+            {formatNumber(Math.round(currentPower))} <span className="text-lg text-slate-500">kWh</span>
+          </p>
         </Card>
 
         <Card className="p-5 border-emerald-500/20">
@@ -166,6 +240,11 @@ export default function GreenOpsPage() {
             <BarChart3 className="h-4 w-4 text-emerald-400" />
           </div>
           <GradeDisplay score={currentScore} grade={currentGrade} />
+          {greenScore && (
+            <p className="text-xs text-slate-500 mt-1">
+              削減率: {greenScore.reductionPercent.toFixed(1)}%
+            </p>
+          )}
         </Card>
       </div>
 
@@ -232,7 +311,7 @@ export default function GreenOpsPage() {
               <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
                   <Pie
-                    data={regionBreakdown}
+                    data={displayRegions}
                     cx="50%"
                     cy="50%"
                     innerRadius={50}
@@ -241,7 +320,7 @@ export default function GreenOpsPage() {
                     dataKey="value"
                     strokeWidth={0}
                   >
-                    {regionBreakdown.map((entry) => (
+                    {displayRegions.map((entry: { name: string; value: number; color: string }) => (
                       <Cell key={entry.name} fill={entry.color} />
                     ))}
                   </Pie>
@@ -249,7 +328,7 @@ export default function GreenOpsPage() {
                     verticalAlign="bottom"
                     iconType="circle"
                     iconSize={8}
-                    formatter={(value: string) => <span className="text-xs text-slate-400 ml-1">{value}</span>}
+                    formatter={(value: string): React.ReactNode => <span className="text-xs text-slate-400 ml-1">{value}</span>}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -271,7 +350,7 @@ export default function GreenOpsPage() {
             {Object.entries(EMISSION_FACTORS).map(([key, value]) => (
               <div key={key} className="flex items-center justify-between p-3 rounded-xl bg-slate-800/40">
                 <span className="text-sm text-slate-300 font-mono">{key}</span>
-                <span className="text-sm font-medium tabular-nums text-emerald-400">{value}</span>
+                <span className="text-sm font-medium tabular-nums text-emerald-400">{value as number}</span>
               </div>
             ))}
           </div>
@@ -288,28 +367,31 @@ export default function GreenOpsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {reportHistory.map((report) => (
-              <div key={report.month} className="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800/60 transition-colors">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium text-white tabular-nums">{report.month}</span>
-                  <Badge className={cn('text-xs', gradeColors[report.grade])}>
-                    {report.grade}
-                  </Badge>
+            {displayReports.map((report) => {
+              const grade = getGreenGrade(report.greenScore);
+              return (
+                <div key={report.reportMonth} className="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800/60 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium text-white tabular-nums">{report.reportMonth}</span>
+                    <Badge className={cn('text-xs', gradeColors[grade])}>
+                      {grade}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <span className="text-sm tabular-nums text-slate-400">{formatCO2(report.totalCarbonKg)}</span>
+                    <span className="text-sm tabular-nums text-slate-400">{formatNumber(Math.round(report.totalPowerKwh))} kWh</span>
+                    <span className="text-sm tabular-nums font-medium text-emerald-400">Score: {report.greenScore}</span>
+                    <button
+                      onClick={() => handlePdfPrint(report.reportMonth)}
+                      className="flex items-center gap-1 text-xs text-slate-400 hover:text-emerald-400 transition-colors"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      PDF
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-6">
-                  <span className="text-sm tabular-nums text-slate-400">{formatCO2(report.carbonKg)}</span>
-                  <span className="text-sm tabular-nums text-slate-400">{formatNumber(report.powerKwh)} kWh</span>
-                  <span className="text-sm tabular-nums font-medium text-emerald-400">Score: {report.score}</span>
-                  <button
-                    onClick={() => handlePdfPrint(report.month)}
-                    className="flex items-center gap-1 text-xs text-slate-400 hover:text-emerald-400 transition-colors"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    PDF
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

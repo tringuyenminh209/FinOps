@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Cloud, Server, Clock, TrendingDown, CreditCard,
-  Bell, FileText, Settings, Leaf,
+  Bell, FileText, Settings, Leaf, Sparkles, CheckSquare, ScrollText,
   ChevronLeft, ChevronRight, X, Shield, Zap, LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,8 +25,11 @@ const navItems = [
   { href: '/dashboard/schedules', icon: Clock, label: 'Night-Watch' },
   { href: '/dashboard/costs', icon: TrendingDown, label: 'コスト分析' },
   { href: '/dashboard/greenops', icon: Leaf, label: 'GreenOps' },
+  { href: '/dashboard/ai-advisor', icon: Sparkles, label: 'AI Advisor' },
+  { href: '/dashboard/approvals', icon: CheckSquare, label: '稟議管理' },
   { href: '/dashboard/reports', icon: FileText, label: 'レポート' },
   { href: '/dashboard/notifications', icon: Bell, label: 'LINE通知' },
+  { href: '/dashboard/audit', icon: ScrollText, label: '操作履歴' },
   { href: '/dashboard/billing', icon: CreditCard, label: '請求管理' },
   { href: '/dashboard/settings', icon: Settings, label: '設定' },
 ];

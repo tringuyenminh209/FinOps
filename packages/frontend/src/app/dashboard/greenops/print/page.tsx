@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Leaf, Zap, Flame, Loader2 } from 'lucide-react';
 import { apiGet } from '@/lib/api';
@@ -13,7 +13,7 @@ interface ReportResponse {
   data: GreenReport;
 }
 
-export default function GreenOpsPrintPage() {
+function GreenOpsPrintContent() {
   const searchParams = useSearchParams();
   const month = searchParams.get('month') ?? '';
   const [report, setReport] = useState<GreenReport | null>(null);
@@ -157,7 +157,7 @@ export default function GreenOpsPrintPage() {
             {Object.entries(EMISSION_FACTORS).map(([key, value]) => (
               <div key={key} className="border border-slate-200 rounded p-2 text-xs">
                 <span className="font-mono text-slate-600">{key}</span>
-                <span className="float-right font-bold text-emerald-600">{value}</span>
+                <span className="float-right font-bold text-emerald-600">{value as number}</span>
               </div>
             ))}
           </div>
@@ -192,5 +192,17 @@ export default function GreenOpsPrintPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function GreenOpsPrintPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+      </div>
+    }>
+      <GreenOpsPrintContent />
+    </Suspense>
   );
 }

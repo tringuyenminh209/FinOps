@@ -160,3 +160,13 @@ export const greenReportQuerySchema = z.object({
 
 export type CarbonCalculateInput = z.infer<typeof carbonCalculateSchema>;
 export type GreenReportQueryInput = z.infer<typeof greenReportQuerySchema>;
+
+// ── AI Advisor ──
+
+export const updateOptimizationSchema = z.object({
+  status: z.enum(['approved', 'dismissed'], {
+    required_error: 'statusはapproved/dismissedのいずれかです',
+  }),
+});
+
+export type UpdateOptimizationInput = z.infer<typeof updateOptimizationSchema>;

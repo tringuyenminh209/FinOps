@@ -257,9 +257,9 @@ export default function RegisterPage() {
               </div>
             </div>
             <span className="text-xs text-slate-500 leading-relaxed">
-              <Link href="/terms" className="text-emerald-500 hover:text-emerald-400">利用規約</Link>
+              <Link href={'/terms' as any} className="text-emerald-500 hover:text-emerald-400">利用規約</Link>
               {' '}および{' '}
-              <Link href="/privacy" className="text-emerald-500 hover:text-emerald-400">プライバシーポリシー</Link>
+              <Link href={'/privacy' as any} className="text-emerald-500 hover:text-emerald-400">プライバシーポリシー</Link>
               に同意します
             </span>
           </label>

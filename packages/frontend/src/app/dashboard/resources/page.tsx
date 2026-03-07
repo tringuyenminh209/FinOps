@@ -1,15 +1,26 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, Filter, Download, Server } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { Search, Download, Server } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ResourceTable } from '@/components/dashboard/resource-table';
+import { apiGet } from '@/lib/api';
+import type { ApiResponse } from '@finops/shared';
 
-const resources = [
+interface ResourceItem {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  region: string;
+  monthlyCost: number;
+}
+
+const DEMO_RESOURCES: ResourceItem[] = [
   { id: '1', name: 'web-api-prod-01', type: 'EC2 (t3.large)', status: 'running', region: 'ap-northeast-1', monthlyCost: 12500 },
   { id: '2', name: 'web-api-prod-02', type: 'EC2 (t3.large)', status: 'running', region: 'ap-northeast-1', monthlyCost: 12500 },
   { id: '3', name: 'batch-worker-01', type: 'EC2 (c5.xlarge)', status: 'running', region: 'ap-northeast-1', monthlyCost: 28000 },
@@ -25,20 +36,39 @@ const resources = [
 ];
 
 export default function ResourcesPage() {
+  const [allResources, setAllResources] = useState<ResourceItem[]>(DEMO_RESOURCES);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
 
-  const filtered = resources.filter((r) => {
+  useEffect(() => {
+    apiGet<ApiResponse<{ resources: any[]; total: number }>>('/api/v1/resources')
+      .then((res) => {
+        if (res.success && res.data && res.data.resources.length > 0) {
+          const mapped = res.data.resources.map((r: any) => ({
+            id: r.id,
+            name: r.name || r.externalId,
+            type: `${r.resourceType.toUpperCase()}`,
+            status: r.status,
+            region: r.region,
+            monthlyCost: r.monthlyCostJpy ?? 0,
+          }));
+          setAllResources(mapped);
+        }
+      })
+      .catch(() => {/* fallback to demo */});
+  }, []);
+
+  const filtered = allResources.filter((r) => {
     if (search && !r.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== 'all' && r.status !== statusFilter) return false;
     if (typeFilter !== 'all' && !r.type.toLowerCase().includes(typeFilter.toLowerCase())) return false;
     return true;
   });
 
-  const running = resources.filter((r) => r.status === 'running').length;
-  const stopped = resources.filter((r) => r.status === 'stopped').length;
-  const totalCost = resources.reduce((s, r) => s + r.monthlyCost, 0);
+  const running = allResources.filter((r) => r.status === 'running').length;
+  const stopped = allResources.filter((r) => r.status === 'stopped').length;
+  const totalCost = allResources.reduce((s, r) => s + r.monthlyCost, 0);
 
   return (
     <div className="space-y-6">
@@ -57,7 +87,7 @@ export default function ResourcesPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card className="p-4">
           <p className="text-xs text-slate-500 uppercase tracking-wider">総リソース数</p>
-          <p className="text-xl font-bold text-white mt-1 tabular-nums">{resources.length}</p>
+          <p className="text-xl font-bold text-white mt-1 tabular-nums">{allResources.length}</p>
         </Card>
         <Card className="p-4">
           <p className="text-xs text-slate-500 uppercase tracking-wider">稼働中</p>

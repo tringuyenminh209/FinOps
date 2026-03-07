@@ -8,6 +8,7 @@ import { authMiddleware, type AuthUser } from '../../middleware/auth';
 import { tenantMiddleware } from '../../middleware/tenant';
 import { scanAllResources } from './service';
 import { PLAN_LIMITS, type ApiResponse } from '@finops/shared';
+import type { AppEnv } from '../../types';
 
 const createAccountSchema = z.object({
   provider: z.enum(['aws', 'azure']).default('aws'),
@@ -17,7 +18,7 @@ const createAccountSchema = z.object({
   accountAlias: z.string().optional(),
 });
 
-const app = new Hono();
+const app = new Hono<AppEnv>();
 
 app.use('*', authMiddleware);
 app.use('*', tenantMiddleware);

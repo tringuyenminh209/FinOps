@@ -221,6 +221,30 @@ export const weeklyReports = pgTable('weekly_reports', {
   index('idx_weekly_reports_org_id').on(table.orgId),
 ]);
 
+// ── Approvals (稟議システム) ──
+export const approvals = pgTable('approvals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull().references(() => organizations.id),
+  requesterId: uuid('requester_id').notNull().references(() => users.id),
+  approverId: uuid('approver_id').references(() => users.id),
+  resourceId: uuid('resource_id').references(() => resources.id),
+  title: varchar('title', { length: 500 }).notNull(),
+  description: text('description').notNull(),
+  actionType: varchar('action_type', { length: 30 }).notNull(), // 'start' | 'stop' | 'resize' | 'delete'
+  status: varchar('status', { length: 20 }).notNull().default('pending'), // 'pending' | 'approved' | 'rejected' | 'expired'
+  urgency: varchar('urgency', { length: 10 }).notNull().default('normal'), // 'low' | 'normal' | 'high'
+  estimatedCostJpy: real('estimated_cost_jpy').default(0),
+  approverComment: text('approver_comment'),
+  expiresAt: timestamp('expires_at'),
+  respondedAt: timestamp('responded_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index('idx_approvals_org_id').on(table.orgId),
+  index('idx_approvals_requester_id').on(table.requesterId),
+  index('idx_approvals_status').on(table.status),
+]);
+
 // ── Green Reports ──
 export const greenReports = pgTable('green_reports', {
   id: uuid('id').defaultRandom().primaryKey(),

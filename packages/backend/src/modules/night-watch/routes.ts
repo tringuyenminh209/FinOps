@@ -6,6 +6,7 @@ import { db } from '../../db';
 import { schedules, resources, cloudAccounts } from '../../db/schema';
 import { authMiddleware, type AuthUser } from '../../middleware/auth';
 import { tenantMiddleware } from '../../middleware/tenant';
+import type { AppEnv } from '../../types';
 import {
   extendSchedule,
   executeNightWatch,
@@ -31,7 +32,7 @@ const overrideSchema = z.object({
   hours: z.number().min(0.5).max(12, '延長は最大12時間までです').default(2),
 });
 
-const app = new Hono();
+const app = new Hono<AppEnv>();
 
 app.use('*', authMiddleware);
 app.use('*', tenantMiddleware);

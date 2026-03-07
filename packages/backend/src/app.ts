@@ -9,12 +9,14 @@ import { authRoutes } from './modules/auth';
 import { cloudConnectorRoutes } from './modules/cloud-connector';
 import { nightWatchRoutes } from './modules/night-watch';
 import { billingRoutes } from './modules/billing';
-// Phase 3
 import { lineRoutes } from './modules/line';
-// Module 3: GreenOps
 import { carbonRoutes } from './modules/greenops';
-// Phase 4+
-// import { aiRoutes } from './modules/ai-advisor';
+import { aiRoutes } from './modules/ai-advisor';
+import { orgRoutes } from './modules/org';
+import { resourcesRoutes } from './modules/resources';
+import { costsRoutes } from './modules/costs';
+import { reportsRoutes } from './modules/reports';
+import { approvalsRoutes } from './modules/approvals';
 
 export const app = new Hono();
 
@@ -28,7 +30,7 @@ app.use('*', cors({
 // ── ヘルスチェック ──
 app.get('/health', (c) => c.json({
     status: 'ok',
-    version: '0.7.0',
+    version: '1.0.0',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
 }));
@@ -39,12 +41,14 @@ app.route('/api/v1/accounts', cloudConnectorRoutes);
 app.route('/api/v1/schedules', nightWatchRoutes);
 app.route('/api/v1/billing', billingRoutes);
 
-// Phase 3
 app.route('/api/v1/line', lineRoutes);
-// Module 3: GreenOps
 app.route('/api/v1/carbon', carbonRoutes);
-// Phase 4+
-// app.route('/api/v1/ai', aiRoutes);
+app.route('/api/v1/ai', aiRoutes);
+app.route('/api/v1/org', orgRoutes);
+app.route('/api/v1/resources', resourcesRoutes);
+app.route('/api/v1/costs', costsRoutes);
+app.route('/api/v1/reports', reportsRoutes);
+app.route('/api/v1/approvals', approvalsRoutes);
 
 // ── 404 ──
 app.notFound((c) => c.json({

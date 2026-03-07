@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { apiGet, apiPut } from '@/lib/api';
+import type { ApiResponse } from '@finops/shared';
 import {
   Settings, Building2, Bell, Clock, Shield, Save,
   ToggleLeft, ToggleRight, Link2, ExternalLink, MessageSquare,
@@ -47,7 +49,7 @@ const planStyles: Record<string, { label: string; variant: 'success' | 'info' | 
 };
 
 export default function SettingsPage() {
-  const [org] = useState<OrgInfo>({
+  const [org, setOrg] = useState<OrgInfo>({
     name: 'FinOps株式会社',
     jctId: 'T1234567890123',
     planType: 'pro',
@@ -76,7 +78,67 @@ export default function SettingsPage() {
 
   const [saved, setSaved] = useState(false);
 
-  const handleSave = () => {
+  useEffect(() => {
+    apiGet<ApiResponse<any>>('/api/v1/org')
+      .then((res) => {
+        if (res.success && res.data) {
+          const d = res.data;
+          setOrg({
+            name: d.name ?? 'FinOps株式会社',
+            jctId: d.jctId ?? '',
+            planType: d.planType ?? 'free',
+            memberCount: d.memberCount ?? 0,
+          });
+          if (d.lineIntegration) {
+            setLine((prev) => ({
+              ...prev,
+              enabled: d.lineIntegration.enabled ?? false,
+              connectedUsers: d.lineIntegration.connectedUsers ?? 0,
+            }));
+          }
+        }
+      })
+      .catch(() => {/* keep defaults */});
+
+    apiGet<ApiResponse<any>>('/api/v1/org/settings')
+      .then((res) => {
+        if (res.success && res.data) {
+          const s = res.data;
+          if (s.notifications) {
+            setNotify((prev) => ({
+              ...prev,
+              costAlertThresholdJpy: s.notifications.costAlertThresholdJpy ?? prev.costAlertThresholdJpy,
+              weeklyReportEnabled: s.notifications.weeklyReportEnabled ?? prev.weeklyReportEnabled,
+              weeklyReportDay: s.notifications.weeklyReportDay ?? prev.weeklyReportDay,
+              weeklyReportHour: s.notifications.weeklyReportHour ?? prev.weeklyReportHour,
+            }));
+          }
+          if (s.nightWatch) {
+            setNw({
+              defaultWarningMinutes: s.nightWatch.defaultWarningMinutes ?? 10,
+              defaultExtendHours: s.nightWatch.defaultExtendHours ?? 2,
+            });
+          }
+        }
+      })
+      .catch(() => {/* keep defaults */});
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      await apiPut('/api/v1/org/settings', {
+        notifications: {
+          costAlertThresholdJpy: notify.costAlertThresholdJpy,
+          weeklyReportEnabled: notify.weeklyReportEnabled,
+          weeklyReportDay: notify.weeklyReportDay,
+          weeklyReportHour: notify.weeklyReportHour,
+        },
+        nightWatch: {
+          defaultWarningMinutes: nw.defaultWarningMinutes,
+          defaultExtendHours: nw.defaultExtendHours,
+        },
+      });
+    } catch {/* ignore */}
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
