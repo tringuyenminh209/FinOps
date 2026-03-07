@@ -19,14 +19,15 @@ WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 
+COPY pnpm-workspace.yaml package.json ./
 COPY packages/shared ./packages/shared
 COPY packages/frontend ./packages/frontend
 COPY tsconfig.json ./
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN cd packages/shared && pnpm build 2>/dev/null || true
-RUN cd packages/frontend && pnpm build
+RUN pnpm --filter @finops/shared build 2>/dev/null || true
+RUN pnpm --filter @finops/frontend build
 
 # Stage 3: Production runtime (standalone)
 FROM node:20-alpine AS runner

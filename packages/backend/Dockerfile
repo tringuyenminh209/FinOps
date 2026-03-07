@@ -20,12 +20,13 @@ WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 
+COPY pnpm-workspace.yaml package.json ./
 COPY packages/shared ./packages/shared
 COPY packages/backend ./packages/backend
 COPY tsconfig.json ./
 
-RUN cd packages/shared && pnpm build 2>/dev/null || true
-RUN cd packages/backend && pnpm build
+RUN pnpm --filter @finops/shared build 2>/dev/null || true
+RUN pnpm --filter @finops/backend build
 
 # Stage 3: Production runtime
 FROM node:20-alpine AS runner
