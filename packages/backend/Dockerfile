@@ -42,8 +42,9 @@ RUN addgroup --system --gid 1001 finops && \
 COPY --from=builder --chown=finops:finops /app/node_modules ./node_modules
 COPY --from=builder --chown=finops:finops /app/packages/backend/dist ./packages/backend/dist
 COPY --from=builder --chown=finops:finops /app/packages/backend/package.json ./packages/backend/package.json
-COPY --from=builder --chown=finops:finops /app/packages/shared/dist ./packages/shared/dist
-COPY --from=builder --chown=finops:finops /app/packages/shared/package.json ./packages/shared/package.json
+# Place shared directly in node_modules to avoid broken workspace symlinks
+COPY --from=builder --chown=finops:finops /app/packages/shared/dist ./node_modules/@finops/shared/dist
+COPY --from=builder --chown=finops:finops /app/packages/shared/package.json ./node_modules/@finops/shared/package.json
 USER finops
 EXPOSE 3001
 
