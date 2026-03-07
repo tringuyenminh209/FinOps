@@ -19,8 +19,6 @@ RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/backend/node_modules ./packages/backend/node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
 
 COPY packages/shared ./packages/shared
 COPY packages/backend ./packages/backend
@@ -40,15 +38,11 @@ ENV PORT=3001
 RUN addgroup --system --gid 1001 finops && \
   adduser --system --uid 1001 finops
 
-# Root node_modules (hoisted packages)
 COPY --from=builder --chown=finops:finops /app/node_modules ./node_modules
-# Backend workspace: keep directory structure so Node resolves workspace node_modules 
 COPY --from=builder --chown=finops:finops /app/packages/backend/dist ./packages/backend/dist
-COPY --from=builder --chown=finops:finops /app/packages/backend/node_modules ./packages/backend/node_modules
 COPY --from=builder --chown=finops:finops /app/packages/backend/package.json ./packages/backend/package.json
 COPY --from=builder --chown=finops:finops /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder --chown=finops:finops /app/packages/shared/package.json ./packages/shared/package.json
-COPY --from=builder --chown=finops:finops /app/packages/shared/node_modules ./packages/shared/node_modules
 USER finops
 EXPOSE 3001
 

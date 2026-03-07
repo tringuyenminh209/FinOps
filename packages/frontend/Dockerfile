@@ -18,8 +18,6 @@ RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/frontend/node_modules ./packages/frontend/node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
 
 COPY packages/shared ./packages/shared
 COPY packages/frontend ./packages/frontend
