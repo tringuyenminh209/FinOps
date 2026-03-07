@@ -45,6 +45,9 @@ RUN addgroup --system --gid 1001 finops && \
 COPY --from=builder --chown=finops:finops /app/packages/frontend/public ./public
 COPY --from=builder --chown=finops:finops /app/packages/frontend/.next/standalone ./
 COPY --from=builder --chown=finops:finops /app/packages/frontend/.next/static ./.next/static
+# shared package: symlink in node_modules points here at runtime
+COPY --from=builder --chown=finops:finops /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder --chown=finops:finops /app/packages/shared/package.json ./packages/shared/package.json
 
 USER finops
 EXPOSE 3000
