@@ -141,6 +141,15 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 
   fetchMe: async () => {
+    // Demo mode: skip API call
+    if (typeof window !== 'undefined' && localStorage.getItem('token') === 'demo-token') {
+      set({
+        user: { id: 'demo', orgId: 'demo-org', role: 'admin', displayName: 'デモユーザー', email: 'demo@finops.jp' },
+        isAuthenticated: true,
+        isLoading: false,
+      });
+      return;
+    }
     try {
       const res = await apiGet<MeResponse>('/auth/me');
       set({ user: res.data, isAuthenticated: true, isLoading: false });
