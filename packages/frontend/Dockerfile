@@ -9,6 +9,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/frontend/package.json ./packages/frontend/
 COPY packages/shared/package.json ./packages/shared/
 
+RUN echo "shamefully-hoist=true" >> .npmrc
 RUN pnpm install --frozen-lockfile --filter @finops/frontend --filter @finops/shared
 
 # Stage 2: Build
@@ -56,4 +57,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "packages/frontend/server.js"]
+CMD ["node", "server.js"]
