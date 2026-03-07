@@ -60,6 +60,11 @@ services:
     build:
       context: ..
       dockerfile: packages/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_LINE_CLIENT_ID: ${NEXT_PUBLIC_LINE_CLIENT_ID}
+        NEXT_PUBLIC_LIFF_ID: ${NEXT_PUBLIC_LIFF_ID}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
     container_name: finops-frontend-prod
     restart: always
     ports:
