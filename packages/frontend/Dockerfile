@@ -40,7 +40,7 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
 RUN addgroup --system --gid 1001 finops && \
-    adduser --system --uid 1001 finops
+  adduser --system --uid 1001 finops
 
 COPY --from=builder --chown=finops:finops /app/packages/frontend/public ./public
 COPY --from=builder --chown=finops:finops /app/packages/frontend/.next/standalone ./
@@ -56,4 +56,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "server.js"]
+CMD ["node", "packages/frontend/server.js"]
