@@ -37,15 +37,17 @@ ENV NODE_ENV=production
 ENV PORT=3001
 
 RUN addgroup --system --gid 1001 finops && \
-    adduser --system --uid 1001 finops
+  adduser --system --uid 1001 finops
 
-COPY --from=builder --chown=finops:finops /app/packages/backend/dist ./dist
+# Root node_modules (hoisted packages)
 COPY --from=builder --chown=finops:finops /app/node_modules ./node_modules
-COPY --from=builder --chown=finops:finops /app/packages/backend/package.json ./
-# shared package: symlink in node_modules points here at runtime
+# Backend workspace: keep directory structure so Node resolves workspace node_modules 
+COPY --from=builder --chown=finops:finops /app/packages/backend/dist ./packages/backend/dist
+COPY --from=builder --chown=finops:finops /app/packages/backend/node_modules ./packages/backend/node_modules
+COPY --from=builder --chown=finops:finops /app/packages/backend/package.json ./packages/backend/package.json
 COPY --from=builder --chown=finops:finops /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder --chown=finops:finops /app/packages/shared/package.json ./packages/shared/package.json
-
+COPY --from=builder --chown=finops:finops /app/packages/shared/node_modules ./packages/shared/node_modules
 USER finops
 EXPOSE 3001
 
@@ -53,4 +55,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/index.js"]
+
+CMD ["node", "packages/backend/dist/index.js"]
