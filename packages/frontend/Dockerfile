@@ -45,6 +45,8 @@ RUN addgroup --system --gid 1001 finops && \
 COPY --from=builder --chown=finops:finops /app/packages/frontend/public ./public
 COPY --from=builder --chown=finops:finops /app/packages/frontend/.next/standalone ./
 COPY --from=builder --chown=finops:finops /app/packages/frontend/.next/static ./.next/static
+# Explicitly copy 'next' — standalone may have broken symlink to pnpm virtual store
+COPY --from=builder --chown=finops:finops /app/node_modules/next ./node_modules/next
 # Place shared directly in node_modules to avoid broken workspace symlinks
 COPY --from=builder --chown=finops:finops /app/packages/shared/dist ./node_modules/@finops/shared/dist
 COPY --from=builder --chown=finops:finops /app/packages/shared/package.json ./node_modules/@finops/shared/package.json
