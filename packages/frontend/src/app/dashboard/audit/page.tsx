@@ -24,18 +24,6 @@ interface AuditEntry {
   createdAt: string;
 }
 
-const DEMO_AUDIT: AuditEntry[] = [
-  { id: '1', orgId: 'org-1', userId: 'user-a', action: 'create', targetType: 'cloud_account', targetId: 'acc-1', details: { provider: 'aws', region: 'ap-northeast-1' }, createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString() },
-  { id: '2', orgId: 'org-1', userId: 'user-b', action: 'approve', targetType: 'approval', targetId: 'app-1', details: { approvalTitle: 'RDS停止申請', comment: '問題なし' }, createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
-  { id: '3', orgId: 'org-1', userId: 'user-a', action: 'scan', targetType: 'cloud_account', targetId: 'acc-1', details: { resourcesFound: 12, provider: 'aws' }, createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
-  { id: '4', orgId: 'org-1', userId: 'user-c', action: 'create', targetType: 'schedule', targetId: 'sched-1', details: { resourceName: 'staging-api', startTimeJst: '09:00', endTimeJst: '18:00' }, createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() },
-  { id: '5', orgId: 'org-1', userId: 'user-a', action: 'analyze', targetType: 'ai_advisor', targetId: null, details: { recommendationsGenerated: 5 }, createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString() },
-  { id: '6', orgId: 'org-1', userId: 'user-b', action: 'update', targetType: 'org_settings', targetId: 'org-1', details: { changed: ['notifications.weeklyReportDay', 'nightWatch.defaultWarningMinutes'] }, createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString() },
-  { id: '7', orgId: 'org-1', userId: 'user-a', action: 'override', targetType: 'schedule', targetId: 'sched-2', details: { resourceName: 'batch-worker-01', hours: 2 }, createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() },
-  { id: '8', orgId: 'org-1', userId: null, action: 'night_watch_stop', targetType: 'resource', targetId: 'res-4', details: { resourceName: 'dev-frontend', provider: 'aws' }, createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString() },
-  { id: '9', orgId: 'org-1', userId: 'user-a', action: 'calculate', targetType: 'carbon', targetId: null, details: { totalCarbonKg: 124.5, greenScore: 72 }, createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
-  { id: '10', orgId: 'org-1', userId: 'user-b', action: 'send_report', targetType: 'line_notification', targetId: null, details: { messageType: 'weekly_report', recipientCount: 3 }, createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-];
 
 const ACTION_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   create:          { label: '作成',          color: 'text-emerald-400', icon: Server },
@@ -64,15 +52,15 @@ const TARGET_LABELS: Record<string, string> = {
 };
 
 export default function AuditPage() {
-  const [entries, setEntries] = useState<AuditEntry[]>(DEMO_AUDIT);
+  const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
   const [targetFilter, setTargetFilter] = useState('all');
 
   useEffect(() => {
     apiGet<ApiResponse<AuditEntry[]>>('/api/v1/org/audit')
-      .then((res) => { if (res.success && res.data && res.data.length > 0) setEntries(res.data); })
-      .catch(() => {});
+      .then((res) => { if (res.success && res.data) setEntries(res.data); else setEntries([]); })
+      .catch(() => setEntries([]));
   }, []);
 
   const filtered = entries.filter((e) => {

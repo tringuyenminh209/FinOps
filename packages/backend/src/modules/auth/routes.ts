@@ -10,6 +10,8 @@ import {
   generateRefreshToken,
   verifyJwt,
   getUserById,
+  registerWithEmail,
+  loginWithEmail,
   AuthError,
 } from './service';
 
@@ -158,6 +160,64 @@ authRoutes.post('/refresh', async (c) => {
       { success: false, error: { code: 'REFRESH_FAILED', message: 'トークン更新に失敗しました' } },
       500,
     );
+  }
+});
+
+// ── POST /register ──
+authRoutes.post('/register', async (c) => {
+  try {
+    const body = await c.req.json<{ email: string; password: string; displayName: string; orgName: string }>();
+
+    if (!body.email || !body.password || !body.displayName || !body.orgName) {
+      return c.json(
+        { success: false, error: { code: 'VALIDATION_ERROR', message: '必須項目が不足しています' } },
+        400,
+      );
+    }
+    if (body.password.length < 8) {
+      return c.json(
+        { success: false, error: { code: 'VALIDATION_ERROR', message: 'パスワードは8文字以上で設定してください' } },
+        400,
+      );
+    }
+
+    const user = await registerWithEmail(body);
+    const token = generateJwt({ userId: user.id, orgId: user.orgId, role: user.role });
+    const refreshToken = generateRefreshToken({ userId: user.id, orgId: user.orgId, role: user.role });
+
+    return c.json({ success: true, data: { token, refreshToken, user } }, 201);
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return c.json({ success: false, error: { code: err.code, message: err.message } }, 409);
+    }
+    console.error('Register error:', err);
+    return c.json({ success: false, error: { code: 'REGISTER_FAILED', message: '登録処理中にエラーが発生しました' } }, 500);
+  }
+});
+
+// ── POST /login ──
+authRoutes.post('/login', async (c) => {
+  try {
+    const body = await c.req.json<{ email: string; password: string }>();
+
+    if (!body.email || !body.password) {
+      return c.json(
+        { success: false, error: { code: 'VALIDATION_ERROR', message: 'メールアドレスとパスワードが必要です' } },
+        400,
+      );
+    }
+
+    const user = await loginWithEmail(body.email, body.password);
+    const token = generateJwt({ userId: user.id, orgId: user.orgId, role: user.role });
+    const refreshToken = generateRefreshToken({ userId: user.id, orgId: user.orgId, role: user.role });
+
+    return c.json({ success: true, data: { token, refreshToken, user } });
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return c.json({ success: false, error: { code: err.code, message: err.message } }, 401);
+    }
+    console.error('Login error:', err);
+    return c.json({ success: false, error: { code: 'LOGIN_FAILED', message: 'ログイン処理中にエラーが発生しました' } }, 500);
   }
 });
 

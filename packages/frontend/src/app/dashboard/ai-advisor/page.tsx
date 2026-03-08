@@ -28,62 +28,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   dismissed: { label: '却下', color: 'text-slate-400 bg-slate-400/10 border-slate-400/30', icon: XCircle },
 };
 
-// ── デモデータ ──
-
-const DEMO_RECOMMENDATIONS: Optimization[] = [
-  {
-    id: '1',
-    resourceId: 'r1',
-    recommendedBy: 'gpt-4o-mini',
-    actionType: 'ri_purchase',
-    actionDescription: 'prod-api-server は常時稼働中です。1年間のReserved Instanceを購入することで約40%のコスト削減が見込めます。月額¥18,000 → ¥10,800 に削減可能です。',
-    status: 'pending',
-    savingsJpy: 7200,
-    co2ReducedKg: 5.8,
-    details: { analyzedAt: new Date().toISOString() },
-    recommendedAt: new Date(),
-    executedAt: null,
-  },
-  {
-    id: '2',
-    resourceId: 'r2',
-    recommendedBy: 'gpt-4o-mini',
-    actionType: 'rightsize',
-    actionDescription: 'dev-db-01 のCPU使用率が5%以下で推移しています。db.t3.medium から db.t3.small へのダウンサイジングで25%削減可能です。',
-    status: 'pending',
-    savingsJpy: 3500,
-    co2ReducedKg: 2.1,
-    details: { analyzedAt: new Date().toISOString() },
-    recommendedAt: new Date(),
-    executedAt: null,
-  },
-  {
-    id: '3',
-    resourceId: 'r3',
-    recommendedBy: 'gpt-4o-mini',
-    actionType: 'stop',
-    actionDescription: 'test-ec2-old は14日間停止中ですが月額コストが発生しています。不要なEBSボリュームが原因です。削除することで完全にコストを削減できます。',
-    status: 'approved',
-    savingsJpy: 2100,
-    co2ReducedKg: 1.6,
-    details: { analyzedAt: new Date().toISOString() },
-    recommendedAt: new Date(Date.now() - 86400000),
-    executedAt: new Date(),
-  },
-  {
-    id: '4',
-    resourceId: 'r4',
-    recommendedBy: 'gpt-4o-mini',
-    actionType: 'sp_purchase',
-    actionDescription: '過去3ヶ月のコンピューティング使用量から、Compute Savings Planの購入が最適です。月額¥25,000で30%削減が見込めます。',
-    status: 'dismissed',
-    savingsJpy: 7500,
-    co2ReducedKg: 4.2,
-    details: { analyzedAt: new Date().toISOString() },
-    recommendedAt: new Date(Date.now() - 172800000),
-    executedAt: null,
-  },
-];
 
 export default function AiAdvisorPage() {
   const [recommendations, setRecommendations] = useState<Optimization[]>([]);
@@ -91,24 +35,19 @@ export default function AiAdvisorPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
-  const [isDemo, setIsDemo] = useState(false);
 
   const fetchRecommendations = async () => {
     setLoading(true);
     try {
       const query = filter !== 'all' ? `?status=${filter}` : '';
       const res = await apiGet<ApiResponse<Optimization[]>>(`/api/v1/ai/recommendations${query}`);
-      if (res.success && res.data && res.data.length > 0) {
+      if (res.success && res.data) {
         setRecommendations(res.data);
-      } else if (res.success && res.data?.length === 0) {
-        setRecommendations([]);
       } else {
-        setRecommendations(DEMO_RECOMMENDATIONS);
-        setIsDemo(true);
+        setRecommendations([]);
       }
     } catch {
-      setRecommendations(DEMO_RECOMMENDATIONS);
-      setIsDemo(true);
+      setRecommendations([]);
     } finally {
       setLoading(false);
     }
@@ -132,13 +71,6 @@ export default function AiAdvisorPage() {
   };
 
   const handleUpdate = async (id: string, status: 'approved' | 'dismissed') => {
-    if (isDemo) {
-      setRecommendations(prev =>
-        prev.map(r => r.id === id ? { ...r, status } : r)
-      );
-      return;
-    }
-
     setUpdatingId(id);
     try {
       const res = await apiPut<ApiResponse<Optimization>>(`/api/v1/ai/recommendations/${id}`, { status });
@@ -155,18 +87,16 @@ export default function AiAdvisorPage() {
   };
 
   // KPI 集計
-  const allRecs = isDemo ? DEMO_RECOMMENDATIONS : recommendations;
-  const pending = allRecs.filter(r => r.status === 'pending').length;
-  const approved = allRecs.filter(r => r.status === 'approved').length;
-  const totalSavings = allRecs
+  const pending = recommendations.filter(r => r.status === 'pending').length;
+  const approved = recommendations.filter(r => r.status === 'approved').length;
+  const totalSavings = recommendations
     .filter(r => r.status === 'pending' || r.status === 'approved')
     .reduce((s, r) => s + r.savingsJpy, 0);
-  const totalCo2 = allRecs
+  const totalCo2 = recommendations
     .filter(r => r.status === 'pending' || r.status === 'approved')
     .reduce((s, r) => s + r.co2ReducedKg, 0);
 
-  const displayRecs = recommendations.length > 0 || !isDemo ? recommendations : DEMO_RECOMMENDATIONS;
-  const filtered = filter === 'all' ? displayRecs : displayRecs.filter(r => r.status === filter);
+  const filtered = filter === 'all' ? recommendations : recommendations.filter(r => r.status === filter);
 
   return (
     <div className="space-y-6">
@@ -180,9 +110,6 @@ export default function AiAdvisorPage() {
           <p className="text-sm text-slate-500 mt-1">GPT-4o miniによるクラウドコスト最適化提案</p>
         </div>
         <div className="flex items-center gap-2">
-          {isDemo && (
-            <Badge variant="outline" className="text-xs">デモデータ</Badge>
-          )}
           <Button
             variant="primary"
             onClick={handleAnalyze}

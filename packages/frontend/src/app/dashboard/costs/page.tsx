@@ -1,40 +1,38 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { TrendingDown, ArrowDown, ArrowUp, Calendar } from 'lucide-react';
+import { TrendingDown, ArrowDown, ArrowUp } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Select } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
+import { apiGet } from '@/lib/api';
 
-const monthlyData = [
-  { month: '9月', ec2: 320000, rds: 280000, other: 120000 },
-  { month: '10月', ec2: 310000, rds: 275000, other: 115000 },
-  { month: '11月', ec2: 290000, rds: 260000, other: 108000 },
-  { month: '12月', ec2: 270000, rds: 250000, other: 100000 },
-  { month: '1月', ec2: 255000, rds: 240000, other: 95000 },
-  { month: '2月', ec2: 240000, rds: 230000, other: 90000 },
-];
+interface MonthlyPoint {
+  month: string;
+  cost: number;
+}
 
-const breakdownData = [
-  { name: 'EC2', value: 240000, color: '#10b981' },
-  { name: 'RDS', value: 230000, color: '#06b6d4' },
-  { name: 'ElastiCache', value: 32000, color: '#8b5cf6' },
-  { name: 'S3', value: 18000, color: '#f59e0b' },
-  { name: 'その他', value: 40000, color: '#64748b' },
-];
+interface BreakdownPoint {
+  name: string;
+  value: number;
+  color: string;
+}
 
-const comparisons = [
-  { service: 'EC2', current: 240000, previous: 255000 },
-  { service: 'RDS', current: 230000, previous: 240000 },
-  { service: 'ElastiCache', current: 32000, previous: 35000 },
-  { service: 'S3', current: 18000, previous: 16000 },
-  { service: 'Lambda', current: 8000, previous: 9500 },
-  { service: 'CloudWatch', current: 12000, previous: 12000 },
-];
+interface CostSummary {
+  currentMonthJpy: number;
+  previousMonthJpy: number;
+  changePercent: number;
+}
+
+const COLORS = ['#10b981', '#06b6d4', '#8b5cf6', '#f59e0b', '#64748b', '#ef4444'];
+
+function formatMonth(ym: string): string {
+  const m = ym.split('-')[1];
+  return m ? parseInt(m, 10) + '月' : ym;
+}
 
 function CustomBarTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
@@ -53,10 +51,48 @@ function CustomBarTooltip({ active, payload, label }: any) {
 }
 
 export default function CostsPage() {
-  const totalCurrent = breakdownData.reduce((s, d) => s + d.value, 0) + 8000 + 12000;
-  const totalPrevious = comparisons.reduce((s, c) => s + c.previous, 0);
-  const diff = totalCurrent - totalPrevious;
-  const diffPct = ((diff / totalPrevious) * 100).toFixed(1);
+  const [monthlyData, setMonthlyData] = useState<MonthlyPoint[]>([]);
+  const [breakdownData, setBreakdownData] = useState<BreakdownPoint[]>([]);
+  const [summary, setSummary] = useState<CostSummary | null>(null);
+
+  useEffect(() => {
+    apiGet<{ success: boolean; data: { monthly: { month: string; amountJpy: number }[]; breakdown: { type: string; amountJpy: number }[]; total: number } }>('/costs?months=6')
+      .then((res) => {
+        if (res.success && res.data) {
+          setMonthlyData(res.data.monthly.map((m) => ({
+            month: formatMonth(m.month),
+            cost: m.amountJpy,
+          })));
+          setBreakdownData(res.data.breakdown.map((b, i) => ({
+            name: b.type,
+            value: b.amountJpy,
+            color: COLORS[i % COLORS.length],
+          })));
+        } else {
+          setMonthlyData([]);
+          setBreakdownData([]);
+        }
+      })
+      .catch(() => {
+        setMonthlyData([]);
+        setBreakdownData([]);
+      });
+
+    apiGet<{ success: boolean; data: CostSummary }>('/costs/summary')
+      .then((res) => {
+        if (res.success && res.data) {
+          setSummary(res.data);
+        } else {
+          setSummary(null);
+        }
+      })
+      .catch(() => setSummary(null));
+  }, []);
+
+  const currentMonthJpy = summary?.currentMonthJpy ?? 0;
+  const previousMonthJpy = summary?.previousMonthJpy ?? 0;
+  const changePercent = summary?.changePercent ?? 0;
+  const diffAmt = currentMonthJpy - previousMonthJpy;
 
   return (
     <div className="space-y-6">
@@ -68,58 +104,59 @@ export default function CostsPage() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">クラウドコストの詳細分析と推移</p>
         </div>
-        <Select className="w-auto">
-          <option>2026年2月</option>
-          <option>2026年1月</option>
-          <option>2025年12月</option>
-        </Select>
       </div>
 
       {/* KPI Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="p-5">
           <p className="text-xs text-slate-500 uppercase tracking-wider">今月の合計コスト</p>
-          <p className="text-3xl font-bold text-white mt-2 tabular-nums">{formatCurrency(totalCurrent)}</p>
-          <div className="flex items-center gap-1 mt-1">
-            {diff < 0 ? (
-              <ArrowDown className="h-3 w-3 text-emerald-400" />
-            ) : (
-              <ArrowUp className="h-3 w-3 text-red-400" />
-            )}
-            <span className={`text-xs font-medium ${diff < 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {diffPct}% 前月比
-            </span>
-          </div>
+          <p className="text-3xl font-bold text-white mt-2 tabular-nums">{formatCurrency(currentMonthJpy)}</p>
+          {summary && (
+            <div className="flex items-center gap-1 mt-1">
+              {changePercent <= 0 ? (
+                <ArrowDown className="h-3 w-3 text-emerald-400" />
+              ) : (
+                <ArrowUp className="h-3 w-3 text-red-400" />
+              )}
+              <span className={`text-xs font-medium ${changePercent <= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {Math.abs(changePercent).toFixed(1)}% 前月比
+              </span>
+            </div>
+          )}
         </Card>
         <Card className="p-5">
           <p className="text-xs text-slate-500 uppercase tracking-wider">前月の合計コスト</p>
-          <p className="text-3xl font-bold text-slate-400 mt-2 tabular-nums">{formatCurrency(totalPrevious)}</p>
+          <p className="text-3xl font-bold text-slate-400 mt-2 tabular-nums">{formatCurrency(previousMonthJpy)}</p>
         </Card>
         <Card className="p-5 border-emerald-500/20">
           <p className="text-xs text-slate-500 uppercase tracking-wider">前月比 削減額</p>
-          <p className="text-3xl font-bold text-emerald-400 mt-2 tabular-nums">{formatCurrency(Math.abs(diff))}</p>
+          <p className="text-3xl font-bold text-emerald-400 mt-2 tabular-nums">{formatCurrency(Math.abs(diffAmt))}</p>
         </Card>
       </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
-        {/* Stacked Bar Chart */}
+        {/* Bar Chart */}
         <Card className="xl:col-span-2">
           <CardHeader>
-            <CardTitle>サービス別 月間コスト推移</CardTitle>
+            <CardTitle>月間コスト推移</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={monthlyData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.1)" />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(v) => `¥${(v / 10000).toFixed(0)}万`} />
-                <RechartsTooltip content={<CustomBarTooltip />} />
-                <Bar dataKey="ec2" name="EC2" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="rds" name="RDS" stackId="a" fill="#06b6d4" />
-                <Bar dataKey="other" name="その他" stackId="a" fill="#64748b" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {monthlyData.length === 0 ? (
+              <div className="flex items-center justify-center h-[300px] text-slate-500 text-sm">
+                コストデータがありません
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={monthlyData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.1)" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(v) => `¥${(v / 10000).toFixed(0)}万`} />
+                  <RechartsTooltip content={<CustomBarTooltip />} />
+                  <Bar dataKey="cost" name="コスト" fill="#10b981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -129,64 +166,39 @@ export default function CostsPage() {
             <CardTitle>今月のサービス別内訳</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie
-                  data={breakdownData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={3}
-                  dataKey="value"
-                  strokeWidth={0}
-                >
-                  {breakdownData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Legend
-                  verticalAlign="bottom"
-                  iconType="circle"
-                  iconSize={8}
-                  formatter={(value: string) => <span className="text-xs text-slate-400 ml-1">{value}</span>}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {breakdownData.length === 0 ? (
+              <div className="flex items-center justify-center h-[260px] text-slate-500 text-sm">
+                内訳データがありません
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={breakdownData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={3}
+                    dataKey="value"
+                    strokeWidth={0}
+                  >
+                    {breakdownData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Legend
+                    verticalAlign="bottom"
+                    iconType="circle"
+                    iconSize={8}
+                    formatter={(value: string) => <span className="text-xs text-slate-400 ml-1">{value}</span>}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Comparison Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-slate-500" />
-            前月比較
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {comparisons.map((row) => {
-              const change = row.current - row.previous;
-              const changePct = row.previous > 0 ? ((change / row.previous) * 100).toFixed(1) : '0.0';
-              return (
-                <div key={row.service} className="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800/60 transition-colors">
-                  <span className="text-sm font-medium text-slate-300">{row.service}</span>
-                  <div className="flex items-center gap-6">
-                    <span className="text-sm tabular-nums text-slate-400">{formatCurrency(row.previous)}</span>
-                    <span className="text-sm tabular-nums text-white font-medium">{formatCurrency(row.current)}</span>
-                    <span className={`text-xs font-medium tabular-nums flex items-center gap-0.5 w-20 justify-end ${change <= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {change <= 0 ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
-                      {changePct}%
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

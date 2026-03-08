@@ -37,8 +37,8 @@ const app = new Hono<AppEnv>();
 app.use('*', authMiddleware);
 app.use('*', tenantMiddleware);
 
-/** GET /schedules → 組織のスケジュール一覧 */
-app.get('/schedules', async (c) => {
+/** GET / → 組織のスケジュール一覧 */
+app.get('/', async (c) => {
   const user = c.get('user') as AuthUser;
 
   try {
@@ -91,8 +91,8 @@ app.get('/schedules', async (c) => {
   }
 });
 
-/** POST /schedules → スケジュール作成 */
-app.post('/schedules', zValidator('json', createScheduleSchema), async (c) => {
+/** POST / → スケジュール作成 */
+app.post('/', zValidator('json', createScheduleSchema), async (c) => {
   const user = c.get('user') as AuthUser;
   const body = c.req.valid('json');
 
@@ -177,8 +177,8 @@ app.post('/schedules', zValidator('json', createScheduleSchema), async (c) => {
   }
 });
 
-/** PUT /schedules/:id → スケジュール更新 */
-app.put('/schedules/:id', zValidator('json', updateScheduleSchema), async (c) => {
+/** PUT /:id → スケジュール更新 */
+app.put('/:id', zValidator('json', updateScheduleSchema), async (c) => {
   const user = c.get('user') as AuthUser;
   const scheduleId = c.req.param('id');
   const body = c.req.valid('json');
@@ -238,8 +238,8 @@ app.put('/schedules/:id', zValidator('json', updateScheduleSchema), async (c) =>
   }
 });
 
-/** POST /schedules/:id/override → 残業延長 */
-app.post('/schedules/:id/override', zValidator('json', overrideSchema), async (c) => {
+/** POST /:id/override → 残業延長 */
+app.post('/:id/override', zValidator('json', overrideSchema), async (c) => {
   const user = c.get('user') as AuthUser;
   const scheduleId = c.req.param('id');
   const { hours } = c.req.valid('json');
@@ -295,8 +295,8 @@ app.post('/schedules/:id/override', zValidator('json', overrideSchema), async (c
   }
 });
 
-/** DELETE /schedules/:id → スケジュール無効化 */
-app.delete('/schedules/:id', async (c) => {
+/** DELETE /:id → スケジュール無効化 */
+app.delete('/:id', async (c) => {
   const user = c.get('user') as AuthUser;
   const scheduleId = c.req.param('id');
 

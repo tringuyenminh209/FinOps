@@ -1,4 +1,5 @@
 // 認証サービス — LINE認証、JWT管理、ユーザー管理
+import { scryptSync, randomBytes, timingSafeEqual } from 'crypto';
 import { sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { createJwt, verifyJwt } from '../../middleware/auth';
@@ -172,4 +173,95 @@ export class AuthError extends Error {
     super(message);
     this.name = 'AuthError';
   }
+}
+
+// ── パスワードハッシュ ──
+export function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString('hex');
+  const hash = scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+export function verifyPassword(password: string, stored: string): boolean {
+  const [salt, hash] = stored.split(':');
+  const hashBuf = Buffer.from(hash, 'hex');
+  const derived = scryptSync(password, salt, 64);
+  return hashBuf.length === derived.length && timingSafeEqual(hashBuf, derived);
+}
+
+// ── メール登録 ──
+export async function registerWithEmail(data: {
+  email: string;
+  password: string;
+  displayName: string;
+  orgName: string;
+}): Promise<Pick<User, 'id' | 'orgId' | 'role' | 'displayName' | 'email'>> {
+  // メール重複チェック
+  const existing = await db.execute<{ id: string }>(
+    sql`SELECT id FROM users WHERE email = ${data.email} LIMIT 1`,
+  );
+  if (existing.length > 0) {
+    throw new AuthError('EMAIL_TAKEN', 'このメールアドレスはすでに使用されています');
+  }
+
+  // 組織作成
+  const orgResult = await db.execute<{ id: string }>(
+    sql`INSERT INTO organizations (name, plan_type, payment_method, settings, created_at, updated_at)
+        VALUES (${data.orgName}, 'free', 'stripe', '{}'::jsonb, NOW(), NOW())
+        RETURNING id`,
+  );
+  const orgId = orgResult[0].id;
+
+  // ユーザー作成
+  const passwordHash = hashPassword(data.password);
+  const userResult = await db.execute<{ id: string }>(
+    sql`INSERT INTO users (org_id, email, password_hash, display_name, role, is_active, preferences, last_login_at, created_at)
+        VALUES (${orgId}, ${data.email}, ${passwordHash}, ${data.displayName}, 'admin', true, '{"lang":"ja","tz":"Asia/Tokyo"}'::jsonb, NOW(), NOW())
+        RETURNING id`,
+  );
+
+  return {
+    id: userResult[0].id,
+    orgId,
+    role: 'admin',
+    displayName: data.displayName,
+    email: data.email,
+  };
+}
+
+// ── メールログイン ──
+export async function loginWithEmail(email: string, password: string): Promise<Pick<User, 'id' | 'orgId' | 'role' | 'displayName' | 'email'>> {
+  const rows = await db.execute<{
+    id: string;
+    org_id: string;
+    role: AuthUser['role'];
+    display_name: string | null;
+    password_hash: string | null;
+    is_active: boolean;
+  }>(
+    sql`SELECT id, org_id, role, display_name, password_hash, is_active
+        FROM users WHERE email = ${email} LIMIT 1`,
+  );
+
+  if (rows.length === 0) {
+    throw new AuthError('INVALID_CREDENTIALS', 'メールアドレスまたはパスワードが正しくありません');
+  }
+
+  const user = rows[0];
+  if (!user.is_active) {
+    throw new AuthError('USER_DISABLED', 'アカウントが無効です');
+  }
+  if (!user.password_hash || !verifyPassword(password, user.password_hash)) {
+    throw new AuthError('INVALID_CREDENTIALS', 'メールアドレスまたはパスワードが正しくありません');
+  }
+
+  await db.execute(sql`UPDATE users SET last_login_at = NOW() WHERE id = ${user.id}`);
+
+  return {
+    id: user.id,
+    orgId: user.org_id,
+    role: user.role,
+    displayName: user.display_name,
+    email,
+  };
 }

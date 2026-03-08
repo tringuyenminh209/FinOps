@@ -20,23 +20,9 @@ interface ResourceItem {
   monthlyCost: number;
 }
 
-const DEMO_RESOURCES: ResourceItem[] = [
-  { id: '1', name: 'web-api-prod-01', type: 'EC2 (t3.large)', status: 'running', region: 'ap-northeast-1', monthlyCost: 12500 },
-  { id: '2', name: 'web-api-prod-02', type: 'EC2 (t3.large)', status: 'running', region: 'ap-northeast-1', monthlyCost: 12500 },
-  { id: '3', name: 'batch-worker-01', type: 'EC2 (c5.xlarge)', status: 'running', region: 'ap-northeast-1', monthlyCost: 28000 },
-  { id: '4', name: 'staging-api', type: 'EC2 (t3.medium)', status: 'stopped', region: 'ap-northeast-1', monthlyCost: 5500 },
-  { id: '5', name: 'dev-frontend', type: 'EC2 (t3.small)', status: 'stopped', region: 'ap-northeast-1', monthlyCost: 2800 },
-  { id: '6', name: 'main-db-prod', type: 'RDS (db.r5.large)', status: 'running', region: 'ap-northeast-1', monthlyCost: 58000 },
-  { id: '7', name: 'analytics-db', type: 'RDS (db.r5.xlarge)', status: 'running', region: 'ap-northeast-1', monthlyCost: 95000 },
-  { id: '8', name: 'cache-prod', type: 'ElastiCache (r6g.large)', status: 'running', region: 'ap-northeast-1', monthlyCost: 32000 },
-  { id: '9', name: 'staging-db', type: 'RDS (db.t3.medium)', status: 'stopped', region: 'ap-northeast-1', monthlyCost: 8500 },
-  { id: '10', name: 'ml-training-01', type: 'EC2 (p3.2xlarge)', status: 'stopped', region: 'us-east-1', monthlyCost: 0 },
-  { id: '11', name: 'bastion-host', type: 'EC2 (t3.nano)', status: 'running', region: 'ap-northeast-1', monthlyCost: 800 },
-  { id: '12', name: 'log-aggregator', type: 'EC2 (t3.medium)', status: 'running', region: 'ap-northeast-1', monthlyCost: 7200 },
-];
 
 export default function ResourcesPage() {
-  const [allResources, setAllResources] = useState<ResourceItem[]>(DEMO_RESOURCES);
+  const [allResources, setAllResources] = useState<ResourceItem[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -54,9 +40,11 @@ export default function ResourcesPage() {
             monthlyCost: r.monthlyCostJpy ?? 0,
           }));
           setAllResources(mapped);
+        } else {
+          setAllResources([]);
         }
       })
-      .catch(() => {/* fallback to demo */});
+      .catch(() => setAllResources([]));
   }, []);
 
   const filtered = allResources.filter((r) => {
@@ -131,11 +119,23 @@ export default function ResourcesPage() {
       </div>
 
       {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <ResourceTable resources={filtered} pageSize={10} />
-        </CardContent>
-      </Card>
+      {allResources.length === 0 ? (
+        <Card>
+          <CardContent className="p-0">
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Server className="h-10 w-10 text-slate-600 mb-3" />
+              <p className="text-slate-400 text-sm font-medium">リソースがありません</p>
+              <p className="text-slate-500 text-xs mt-1">クラウドアカウントを接続してスキャンを実行してください</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <ResourceTable resources={filtered} pageSize={10} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

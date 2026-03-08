@@ -60,7 +60,7 @@ function clearTokens() {
 export const useAuth = create<AuthState>((set, get) => ({
   user: null,
   token: null,
-  isLoading: true,
+  isLoading: false,
   isAuthenticated: false,
 
   loginWithLine: async (accessToken, orgId) => {
@@ -141,8 +141,12 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 
   fetchMe: async () => {
-    // Demo mode: skip API call
-    if (typeof window !== 'undefined' && localStorage.getItem('token') === 'demo-token') {
+    // Demo mode: dev only
+    if (
+      process.env.NODE_ENV === 'development' &&
+      typeof window !== 'undefined' &&
+      localStorage.getItem('token') === 'demo-token'
+    ) {
       set({
         user: { id: 'demo', orgId: 'demo-org', role: 'admin', displayName: 'デモユーザー', email: 'demo@finops.jp' },
         isAuthenticated: true,

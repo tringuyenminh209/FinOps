@@ -42,16 +42,6 @@ const typeLabels: Record<MessageType, { label: string; icon: string }> = {
   system: { label: 'システム', icon: '🔔' },
 };
 
-const mockDeliveries: Delivery[] = [
-  { id: '1', messageType: 'weekly_report', status: 'delivered', lineUserId: 'U001', displayName: '田中太郎', sentAt: '2026-03-03T09:00:00+09:00', deliveredAt: '2026-03-03T09:00:02+09:00', errorMessage: null },
-  { id: '2', messageType: 'night_watch_action', status: 'delivered', lineUserId: 'U001', displayName: '田中太郎', sentAt: '2026-03-02T18:00:00+09:00', deliveredAt: '2026-03-02T18:00:01+09:00', errorMessage: null },
-  { id: '3', messageType: 'cost_alert', status: 'delivered', lineUserId: 'U002', displayName: '鈴木花子', sentAt: '2026-03-02T14:30:00+09:00', deliveredAt: '2026-03-02T14:30:01+09:00', errorMessage: null },
-  { id: '4', messageType: 'night_watch_action', status: 'delivered', lineUserId: 'U002', displayName: '鈴木花子', sentAt: '2026-03-01T18:00:00+09:00', deliveredAt: '2026-03-01T18:00:02+09:00', errorMessage: null },
-  { id: '5', messageType: 'weekly_report', status: 'failed', lineUserId: 'U003', displayName: '佐藤次郎', sentAt: '2026-02-24T09:00:00+09:00', deliveredAt: null, errorMessage: 'Rate limit exceeded' },
-  { id: '6', messageType: 'system', status: 'delivered', lineUserId: 'U001', displayName: '田中太郎', sentAt: '2026-02-20T10:00:00+09:00', deliveredAt: '2026-02-20T10:00:01+09:00', errorMessage: null },
-  { id: '7', messageType: 'cost_alert', status: 'queued', lineUserId: 'U001', displayName: '田中太郎', sentAt: '2026-03-03T15:00:00+09:00', deliveredAt: null, errorMessage: null },
-  { id: '8', messageType: 'night_watch_action', status: 'delivered', lineUserId: 'U003', displayName: '佐藤次郎', sentAt: '2026-02-28T18:00:00+09:00', deliveredAt: '2026-02-28T18:00:01+09:00', errorMessage: null },
-];
 
 interface NotifySetting {
   key: string;
@@ -70,13 +60,13 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [settings, setSettings] = useState(defaultSettings);
-  const [deliveries, setDeliveries] = useState<Delivery[]>(mockDeliveries);
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
 
   useEffect(() => {
     apiGet<ApiResponse<{ deliveries: any[] }>>('/api/v1/line/delivery-status?limit=50')
       .then((res) => {
-        if (res.success && res.data && (res.data.deliveries?.length ?? 0) > 0) {
-          const mapped = res.data.deliveries!.map((d: any) => ({
+        if (res.success && res.data && res.data.deliveries) {
+          const mapped = res.data.deliveries.map((d: any) => ({
             id: d.id,
             messageType: d.messageType as MessageType,
             status: d.status as DeliveryStatus,
@@ -87,9 +77,11 @@ export default function NotificationsPage() {
             errorMessage: d.errorMessage ?? null,
           }));
           setDeliveries(mapped);
+        } else {
+          setDeliveries([]);
         }
       })
-      .catch(() => {/* fallback to mock */});
+      .catch(() => setDeliveries([]));
   }, []);
 
   const filtered = deliveries.filter((d) => {

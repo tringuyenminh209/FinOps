@@ -35,6 +35,8 @@ const plans = [
   },
 ];
 
+const isDev = process.env.NODE_ENV === 'development';
+
 export default function RegisterPage() {
   const router = useRouter();
   const { register, isLoading } = useAuth();
@@ -397,15 +399,17 @@ export default function RegisterPage() {
             </Button>
           </div>
 
-          {/* Demo */}
-          <Button
-            variant="ghost"
-            size="md"
-            className="w-full text-slate-600 hover:text-slate-400"
-            onClick={handleDemoRegister}
-          >
-            デモ環境にアクセス（開発用）
-          </Button>
+          {/* Demo — dev only */}
+          {isDev && (
+            <Button
+              variant="ghost"
+              size="md"
+              className="w-full text-slate-600 hover:text-slate-400"
+              onClick={handleDemoRegister}
+            >
+              デモ環境にアクセス（開発用）
+            </Button>
+          )}
         </div>
       )}
 

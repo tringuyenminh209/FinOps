@@ -6,7 +6,11 @@
       "Bash(npx tsc:*)",
       "Bash(ls:*)",
       "Bash(pnpm build:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(cmd:*)",
+      "Bash(docker exec:*)",
+      "Bash(curl:*)",
+      "Bash(git merge:*)"
     ]
   }
 }

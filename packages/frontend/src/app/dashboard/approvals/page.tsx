@@ -44,14 +44,7 @@ interface ApprovalStats {
   urgent: number;
 }
 
-const DEMO_APPROVALS: Approval[] = [
-  { id: '1', title: '本番EC2インスタンス起動申請', description: 'トラフィック増加に伴い本番環境のEC2追加が必要です。週末の大型セール対応のため、本日中に起動を完了したい。', actionType: 'start', urgency: 'high', status: 'pending', requesterId: 'user-a', approverId: null, resourceId: 'res-1', estimatedCostJpy: 28000, approverComment: null, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), respondedAt: null, createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
-  { id: '2', title: 'ステージングRDS停止申請', description: '不要になったステージングDBを停止してコスト削減します。', actionType: 'stop', urgency: 'normal', status: 'approved', requesterId: 'user-b', approverId: 'user-admin', resourceId: 'res-2', estimatedCostJpy: 8500, approverComment: '問題ありません', expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), respondedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() },
-  { id: '3', title: 'MLインスタンス削除申請', description: '学習完了済みのML用EC2インスタンスを削除します。', actionType: 'delete', urgency: 'low', status: 'rejected', requesterId: 'user-c', approverId: 'user-admin', resourceId: 'res-3', estimatedCostJpy: 0, approverComment: 'バックアップを確認してから再申請してください', expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), respondedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() },
-  { id: '4', title: 'バッチサーバースペック変更申請', description: '月次バッチ処理の高速化のためt3.largeからc5.xlargeへのリサイズを申請します。', actionType: 'resize', urgency: 'normal', status: 'pending', requesterId: 'user-b', approverId: null, resourceId: 'res-4', estimatedCostJpy: 15000, approverComment: null, expiresAt: new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString(), respondedAt: null, createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString() },
-];
-
-const DEMO_STATS: ApprovalStats = { total: 4, pending: 2, approved: 1, rejected: 1, expired: 0, urgent: 1 };
+const ZERO_STATS: ApprovalStats = { total: 0, pending: 0, approved: 0, rejected: 0, expired: 0, urgent: 0 };
 
 const STATUS_CONFIG: Record<ApprovalStatus, { label: string; variant: 'warning' | 'success' | 'danger' | 'default'; icon: any }> = {
   pending:  { label: '保留中',   variant: 'warning', icon: Clock },
@@ -75,8 +68,8 @@ const URGENCY_CONFIG: Record<Urgency, { label: string; color: string }> = {
 };
 
 export default function ApprovalsPage() {
-  const [approvalList, setApprovalList] = useState<Approval[]>(DEMO_APPROVALS);
-  const [stats, setStats] = useState<ApprovalStats>(DEMO_STATS);
+  const [approvalList, setApprovalList] = useState<Approval[]>([]);
+  const [stats, setStats] = useState<ApprovalStats>(ZERO_STATS);
   const [filter, setFilter] = useState<string>('all');
   const [comment, setComment] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState<string | null>(null);
@@ -85,11 +78,11 @@ export default function ApprovalsPage() {
 
   useEffect(() => {
     apiGet<ApiResponse<Approval[]>>('/api/v1/approvals')
-      .then((res) => { if (res.success && res.data && res.data.length > 0) setApprovalList(res.data); })
-      .catch(() => {});
+      .then((res) => { if (res.success && res.data) setApprovalList(res.data); else setApprovalList([]); })
+      .catch(() => setApprovalList([]));
     apiGet<ApiResponse<ApprovalStats>>('/api/v1/approvals/stats')
-      .then((res) => { if (res.success && res.data) setStats(res.data); })
-      .catch(() => {});
+      .then((res) => { if (res.success && res.data) setStats(res.data); else setStats(ZERO_STATS); })
+      .catch(() => setStats(ZERO_STATS));
   }, []);
 
   const filtered = filter === 'all' ? approvalList : approvalList.filter((a) => a.status === filter);
@@ -109,7 +102,8 @@ export default function ApprovalsPage() {
           [status === 'approved' ? 'approved' : 'rejected']: prev[status === 'approved' ? 'approved' : 'rejected'] + 1,
         }));
       }
-    } catch {/* demo mode */
+    } catch {
+      // optimistic local update on error
       setApprovalList((prev) => prev.map((a) => a.id === id
         ? { ...a, status, approverComment: comment[id] ?? null, respondedAt: new Date().toISOString() }
         : a));
@@ -128,9 +122,8 @@ export default function ApprovalsPage() {
         setApprovalList((prev) => [res.data!, ...prev]);
         setStats((prev) => ({ ...prev, total: prev.total + 1, pending: prev.pending + 1 }));
       }
-    } catch {/* demo mode */
-      const demo: Approval = { id: Date.now().toString(), ...newApproval, status: 'pending', requesterId: 'me', approverId: null, resourceId: null, approverComment: null, expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), respondedAt: null, createdAt: new Date().toISOString() };
-      setApprovalList((prev) => [demo, ...prev]);
+    } catch {
+      console.error('稟議申請の送信に失敗しました');
     }
     setNewApproval({ title: '', description: '', actionType: 'stop', urgency: 'normal', estimatedCostJpy: 0 });
     setShowForm(false);

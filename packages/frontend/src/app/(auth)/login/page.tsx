@@ -11,13 +11,14 @@ import { cn } from '@/lib/utils';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loginWithEmail, loginWithLine, isLoading } = useAuth();
+  const { loginWithEmail, loginWithLine } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [mode, setMode] = useState<'select' | 'email'>('select');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,11 +29,14 @@ export default function LoginPage() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       await loginWithEmail(email, password);
       router.push('/dashboard');
     } catch {
       setError('メールアドレスまたはパスワードが正しくありません');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -41,8 +45,7 @@ export default function LoginPage() {
     const lineClientId = process.env.NEXT_PUBLIC_LINE_CLIENT_ID;
 
     if (!lineClientId) {
-      // デモモード: LINE Login未設定の場合はダッシュボードに遷移
-      router.push('/dashboard');
+      setError('LINE Loginが設定されていません。管理者にお問い合わせください。');
       return;
     }
 
@@ -53,6 +56,8 @@ export default function LoginPage() {
     window.location.href =
       `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${lineClientId}&redirect_uri=${redirectUri}&state=${state}&scope=profile%20openid%20email`;
   };
+
+  const isDev = process.env.NODE_ENV === 'development';
 
   // デモログイン（開発用）
   const handleDemoLogin = () => {
@@ -87,7 +92,7 @@ export default function LoginPage() {
           {/* LINE Login */}
           <button
             onClick={handleLineLogin}
-            disabled={isLoading}
+            disabled={isSubmitting}
             className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#06C755] px-6 py-3.5 text-sm font-medium text-white transition-all hover:bg-[#05b64e] hover:shadow-lg hover:shadow-[#06C755]/20 disabled:opacity-40"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -117,15 +122,17 @@ export default function LoginPage() {
             メールアドレスでログイン
           </Button>
 
-          {/* Demo Login */}
-          <Button
-            variant="ghost"
-            size="md"
-            className="w-full text-slate-600 hover:text-slate-400"
-            onClick={handleDemoLogin}
-          >
-            デモ環境にアクセス（開発用）
-          </Button>
+          {/* Demo Login — dev only */}
+          {isDev && (
+            <Button
+              variant="ghost"
+              size="md"
+              className="w-full text-slate-600 hover:text-slate-400"
+              onClick={handleDemoLogin}
+            >
+              デモ環境にアクセス（開発用）
+            </Button>
+          )}
         </div>
       ) : (
         <form onSubmit={handleEmailLogin} className="space-y-5 animate-slide-up">
@@ -169,8 +176,8 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
-            {isLoading ? (
+          <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? (
               <span className="flex items-center gap-2">
                 <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ログイン中...

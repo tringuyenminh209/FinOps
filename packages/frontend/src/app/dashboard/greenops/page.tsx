@@ -16,16 +16,6 @@ import { apiGet, apiPost } from '@/lib/api';
 import { EMISSION_FACTORS, getGreenGrade } from '@finops/shared';
 import type { GreenReport, GreenScore, GreenReportDetail, ApiResponse } from '@finops/shared';
 
-// ── デモデータ (API未接続 or フリープラン時のフォールバック) ──
-
-const DEMO_REPORTS: GreenReport[] = [
-  { id: '1', orgId: '', reportMonth: '2026-02', totalCarbonKg: 640, totalPowerKwh: 1600, totalCostJpy: 320000, savingsCarbonKg: 110, savingsCostJpy: 55000, greenScore: 78, details: [{ region: 'ap-northeast-1', provider: 'aws', carbonKg: 420, powerKwh: 1050, resourceCount: 8 }, { region: 'ap-northeast-3', provider: 'aws', carbonKg: 130, powerKwh: 325, resourceCount: 3 }, { region: 'japaneast', provider: 'azure', carbonKg: 60, powerKwh: 150, resourceCount: 2 }, { region: 'japanwest', provider: 'azure', carbonKg: 30, powerKwh: 75, resourceCount: 1 }], createdAt: new Date() },
-  { id: '2', orgId: '', reportMonth: '2026-01', totalCarbonKg: 750, totalPowerKwh: 1900, totalCostJpy: 375000, savingsCarbonKg: 95, savingsCostJpy: 47500, greenScore: 72, details: [], createdAt: new Date() },
-  { id: '3', orgId: '', reportMonth: '2025-12', totalCarbonKg: 870, totalPowerKwh: 2200, totalCostJpy: 435000, savingsCarbonKg: 80, savingsCostJpy: 40000, greenScore: 63, details: [], createdAt: new Date() },
-  { id: '4', orgId: '', reportMonth: '2025-11', totalCarbonKg: 980, totalPowerKwh: 2500, totalCostJpy: 490000, savingsCarbonKg: 60, savingsCostJpy: 30000, greenScore: 55, details: [], createdAt: new Date() },
-  { id: '5', orgId: '', reportMonth: '2025-10', totalCarbonKg: 1150, totalPowerKwh: 2900, totalCostJpy: 575000, savingsCarbonKg: 40, savingsCostJpy: 20000, greenScore: 42, details: [], createdAt: new Date() },
-  { id: '6', orgId: '', reportMonth: '2025-09', totalCarbonKg: 1280, totalPowerKwh: 3200, totalCostJpy: 640000, savingsCarbonKg: 20, savingsCostJpy: 10000, greenScore: 35, details: [], createdAt: new Date() },
-];
 
 const REGION_COLORS = ['#10b981', '#06b6d4', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899'];
 
@@ -75,7 +65,6 @@ export default function GreenOpsPage() {
   const [greenScore, setGreenScore] = useState<GreenScore | null>(null);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
-  const [isDemo, setIsDemo] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -85,20 +74,17 @@ export default function GreenOpsPage() {
         apiGet<ApiResponse<GreenScore>>('/api/v1/carbon/green-score'),
       ]);
 
-      if (reportsRes.success && reportsRes.data && reportsRes.data.length > 0) {
+      if (reportsRes.success && reportsRes.data) {
         setReports(reportsRes.data);
       } else {
-        setReports(DEMO_REPORTS);
-        setIsDemo(true);
+        setReports([]);
       }
 
       if (scoreRes.success && scoreRes.data) {
         setGreenScore(scoreRes.data);
       }
     } catch {
-      // フリープラン or API未接続: デモデータ表示
-      setReports(DEMO_REPORTS);
-      setIsDemo(true);
+      setReports([]);
     } finally {
       setLoading(false);
     }
@@ -120,9 +106,8 @@ export default function GreenOpsPage() {
   };
 
   // 表示用データ導出
-  const displayReports = reports.length > 0 ? reports : DEMO_REPORTS;
-  const latestReport = displayReports[0];
-  const prevReport = displayReports[1];
+  const latestReport = reports[0];
+  const prevReport = reports[1];
 
   const currentCarbon = latestReport?.totalCarbonKg ?? 0;
   const prevCarbon = prevReport?.totalCarbonKg ?? 0;
@@ -133,13 +118,13 @@ export default function GreenOpsPage() {
   const currentGrade = greenScore?.grade ?? getGreenGrade(currentScore);
 
   // チャートデータ変換
-  const carbonTrend = [...displayReports].reverse().slice(-6).map(r => ({
+  const carbonTrend = [...reports].reverse().slice(-6).map(r => ({
     month: r.reportMonth.replace(/^\d{4}-/, '') + '月',
     carbon: r.totalCarbonKg,
     power: r.totalPowerKwh,
   }));
 
-  const scoreTrend = [...displayReports].reverse().slice(-6).map(r => ({
+  const scoreTrend = [...reports].reverse().slice(-6).map(r => ({
     month: r.reportMonth.replace(/^\d{4}-/, '') + '月',
     score: r.greenScore,
   }));
@@ -149,13 +134,6 @@ export default function GreenOpsPage() {
     value: d.carbonKg,
     color: REGION_COLORS[i % REGION_COLORS.length],
   }));
-
-  const displayRegions = regionBreakdown.length > 0 ? regionBreakdown : [
-    { name: 'ap-northeast-1', value: 420, color: '#10b981' },
-    { name: 'ap-northeast-3', value: 130, color: '#06b6d4' },
-    { name: 'japaneast', value: 60, color: '#8b5cf6' },
-    { name: 'japanwest', value: 30, color: '#f59e0b' },
-  ];
 
   if (loading) {
     return (
@@ -180,9 +158,6 @@ export default function GreenOpsPage() {
           <p className="text-sm text-slate-500 mt-1">CO2排出量分析とGreen-scoreダッシュボード</p>
         </div>
         <div className="flex items-center gap-2">
-          {isDemo && (
-            <Badge variant="outline" className="text-xs">デモデータ</Badge>
-          )}
           <Button
             variant="secondary"
             onClick={handleCalculate}
@@ -308,30 +283,36 @@ export default function GreenOpsPage() {
               <CardTitle className="flex items-center gap-2">リージョン別排出量</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={180}>
-                <PieChart>
-                  <Pie
-                    data={displayRegions}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={75}
-                    paddingAngle={3}
-                    dataKey="value"
-                    strokeWidth={0}
-                  >
-                    {displayRegions.map((entry: { name: string; value: number; color: string }) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Legend
-                    verticalAlign="bottom"
-                    iconType="circle"
-                    iconSize={8}
-                    formatter={(value: string): React.ReactNode => <span className="text-xs text-slate-400 ml-1">{value}</span>}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              {regionBreakdown.length === 0 ? (
+                <div className="flex items-center justify-center h-[180px] text-slate-500 text-sm">
+                  データがありません
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie
+                      data={regionBreakdown}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={75}
+                      paddingAngle={3}
+                      dataKey="value"
+                      strokeWidth={0}
+                    >
+                      {regionBreakdown.map((entry: { name: string; value: number; color: string }) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Legend
+                      verticalAlign="bottom"
+                      iconType="circle"
+                      iconSize={8}
+                      formatter={(value: string): React.ReactNode => <span className="text-xs text-slate-400 ml-1">{value}</span>}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -367,7 +348,14 @@ export default function GreenOpsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {displayReports.map((report) => {
+            {reports.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <FileText className="h-10 w-10 text-slate-600 mb-3" />
+                <p className="text-slate-400 text-sm">GreenOpsレポートがありません</p>
+                <p className="text-slate-500 text-xs mt-1">CO2再計算を実行するとレポートが生成されます</p>
+              </div>
+            )}
+            {reports.map((report) => {
               const grade = getGreenGrade(report.greenScore);
               return (
                 <div key={report.reportMonth} className="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800/60 transition-colors">

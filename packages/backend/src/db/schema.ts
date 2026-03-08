@@ -31,6 +31,7 @@ export const users = pgTable('users', {
   orgId: uuid('org_id').notNull().references(() => organizations.id),
   lineUserId: varchar('line_user_id', { length: 255 }),
   email: varchar('email', { length: 255 }),
+  passwordHash: varchar('password_hash', { length: 255 }),
   role: varchar('role', { length: 20 }).notNull().default('viewer'),
   displayName: varchar('display_name', { length: 255 }),
   isActive: boolean('is_active').notNull().default(true),
