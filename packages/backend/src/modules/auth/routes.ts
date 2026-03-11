@@ -12,6 +12,7 @@ import {
   getUserById,
   registerWithEmail,
   loginWithEmail,
+  checkEmailExists,
   AuthError,
 } from './service';
 
@@ -160,6 +161,22 @@ authRoutes.post('/refresh', async (c) => {
       { success: false, error: { code: 'REFRESH_FAILED', message: 'トークン更新に失敗しました' } },
       500,
     );
+  }
+});
+
+// ── POST /check-email ──
+// メールアドレスの重複チェック
+authRoutes.post('/check-email', async (c) => {
+  try {
+    const body = await c.req.json<{ email: string }>();
+    if (!body.email) {
+      return c.json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'メールアドレスが必要です' } }, 400);
+    }
+    const exists = await checkEmailExists(body.email);
+    return c.json({ success: true, data: { exists } });
+  } catch (err) {
+    console.error('Check email error:', err);
+    return c.json({ success: false, error: { code: 'CHECK_FAILED', message: 'メール確認中にエラーが発生しました' } }, 500);
   }
 });
 

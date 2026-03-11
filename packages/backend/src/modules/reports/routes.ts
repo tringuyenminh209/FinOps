@@ -43,12 +43,12 @@ reportsRoutes.get('/weekly', async (c) => {
     .select()
     .from(costCarbonHistory)
     .where(inArray(costCarbonHistory.resourceId, resourceIds))
-    .orderBy(desc(costCarbonHistory.timestamp));
+    .orderBy(desc(costCarbonHistory.recordDate));
 
   // Group into weekly buckets (ISO week-start = Monday)
   const byWeek = new Map<string, { amountJpy: number; carbonKg: number; count: number }>();
   for (const entry of history) {
-    const d = new Date(entry.timestamp);
+    const d = new Date(entry.recordDate);
     // Normalize to Monday of that week
     const day = d.getDay(); // 0=Sun
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);

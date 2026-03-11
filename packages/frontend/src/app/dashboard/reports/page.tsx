@@ -97,13 +97,13 @@ export default function ReportsPage() {
     : 0;
 
   const trendData = [...reports].reverse().map((r) => ({
-    period: r.periodStart.slice(5),
+    period: (r.periodStart ?? '').slice(5) || '-',
     cost: r.totalCostJpy,
     savings: r.savingsJpy,
   }));
 
   const savingsData = [...reports].reverse().map((r) => ({
-    period: r.periodStart.slice(5),
+    period: (r.periodStart ?? '').slice(5) || '-',
     hours: r.stoppedHours,
     savings: r.savingsJpy,
   }));
@@ -244,7 +244,7 @@ export default function ReportsPage() {
                         </div>
                         <div className="text-left">
                           <p className="text-sm font-medium text-slate-200">
-                            {r.periodStart.slice(5).replace('-', '/')} 〜 {r.periodEnd.slice(5).replace('-', '/')}
+                            {(r.periodStart ?? '').slice(5).replace('-', '/') || '-'} 〜 {(r.periodEnd ?? '').slice(5).replace('-', '/') || '-'}
                           </p>
                           <p className="text-xs text-slate-500 mt-0.5">{r.resourceCount}リソース · {r.stoppedHours}h停止</p>
                         </div>

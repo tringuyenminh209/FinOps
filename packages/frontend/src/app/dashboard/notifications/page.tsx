@@ -63,7 +63,7 @@ export default function NotificationsPage() {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
 
   useEffect(() => {
-    apiGet<ApiResponse<{ deliveries: any[] }>>('/api/v1/line/delivery-status?limit=50')
+    apiGet<ApiResponse<{ deliveries: any[] }>>('/line/delivery-status?limit=50')
       .then((res) => {
         if (res.success && res.data && res.data.deliveries) {
           const mapped = res.data.deliveries.map((d: any) => ({

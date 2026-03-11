@@ -29,7 +29,7 @@ function GreenOpsPrintContent() {
 
     async function fetchReport() {
       try {
-        const res = await apiGet<ReportResponse>(`/api/v1/carbon/report/${month}`);
+        const res = await apiGet<ReportResponse>(`/carbon/report/${month}`);
         setReport(res.data);
       } catch {
         setError('レポートの取得に失敗しました');

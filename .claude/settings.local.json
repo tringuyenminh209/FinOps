@@ -10,7 +10,12 @@
       "Bash(cmd:*)",
       "Bash(docker exec:*)",
       "Bash(curl:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(docker stats:*)",
+      "Bash(docker system:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker images:*)",
+      "Bash(docker volume:*)"
     ]
   }
 }

@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/use-auth';
+import { apiPost, ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 type Step = 'account' | 'organization' | 'plan';
@@ -57,6 +58,8 @@ export default function RegisterPage() {
 
   // Plan
   const [selectedPlan, setSelectedPlan] = useState('free');
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailError, setEmailError] = useState('');
 
   const validateAccount = (): boolean => {
     if (!displayName.trim()) { setError('お名前を入力してください'); return false; }
@@ -73,10 +76,31 @@ export default function RegisterPage() {
     return true;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setError('');
-    if (step === 'account' && validateAccount()) setStep('organization');
-    else if (step === 'organization' && validateOrg()) setStep('plan');
+    setEmailError('');
+    if (step === 'account') {
+      if (!validateAccount()) return;
+      setCheckingEmail(true);
+      try {
+        const res = await apiPost<{ success: boolean; data: { exists: boolean } }>(
+          '/auth/check-email',
+          { email },
+        );
+        if (res.data.exists) {
+          setEmailError('このメールアドレスはすでに登録されています');
+          return;
+        }
+      } catch {
+        setEmailError('メールアドレスの確認中にエラーが発生しました');
+        return;
+      } finally {
+        setCheckingEmail(false);
+      }
+      setStep('organization');
+    } else if (step === 'organization' && validateOrg()) {
+      setStep('plan');
+    }
   };
 
   const handleBack = () => {
@@ -89,9 +113,14 @@ export default function RegisterPage() {
     setError('');
     try {
       await register({ email, password, displayName, orgName });
-      router.push('/dashboard');
-    } catch {
-      setError('登録処理中にエラーが発生しました。もう一度お試しください。');
+      router.replace('/dashboard');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setEmailError('このメールアドレスはすでに登録されています');
+        setStep('account');
+      } else {
+        setError('登録処理中にエラーが発生しました。もう一度お試しください。');
+      }
     }
   };
 
@@ -182,10 +211,14 @@ export default function RegisterPage() {
               type="email"
               placeholder="taro@company.co.jp"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
               icon={<Mail className="h-4 w-4" />}
               autoComplete="email"
+              className={emailError ? 'border-red-500 focus:border-red-500' : ''}
             />
+            {emailError && (
+              <p className="text-xs text-red-400 mt-1">{emailError}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -266,9 +299,18 @@ export default function RegisterPage() {
             </span>
           </label>
 
-          <Button size="lg" className="w-full" onClick={handleNext}>
-            次へ
-            <ArrowRight className="h-4 w-4" />
+          <Button size="lg" className="w-full" onClick={handleNext} disabled={checkingEmail}>
+            {checkingEmail ? (
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                確認中...
+              </span>
+            ) : (
+              <>
+                次へ
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
           </Button>
         </div>
       )}

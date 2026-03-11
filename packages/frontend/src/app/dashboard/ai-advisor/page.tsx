@@ -40,7 +40,7 @@ export default function AiAdvisorPage() {
     setLoading(true);
     try {
       const query = filter !== 'all' ? `?status=${filter}` : '';
-      const res = await apiGet<ApiResponse<Optimization[]>>(`/api/v1/ai/recommendations${query}`);
+      const res = await apiGet<ApiResponse<Optimization[]>>(`/ai/recommendations${query}`);
       if (res.success && res.data) {
         setRecommendations(res.data);
       } else {
@@ -58,7 +58,7 @@ export default function AiAdvisorPage() {
   const handleAnalyze = async () => {
     setAnalyzing(true);
     try {
-      const res = await apiPost<ApiResponse<Optimization[]>>('/api/v1/ai/analyze', {});
+      const res = await apiPost<ApiResponse<Optimization[]>>('/ai/analyze', {});
       if (res.success && res.data && res.data.length > 0) {
         setIsDemo(false);
         await fetchRecommendations();
@@ -73,7 +73,7 @@ export default function AiAdvisorPage() {
   const handleUpdate = async (id: string, status: 'approved' | 'dismissed') => {
     setUpdatingId(id);
     try {
-      const res = await apiPut<ApiResponse<Optimization>>(`/api/v1/ai/recommendations/${id}`, { status });
+      const res = await apiPut<ApiResponse<Optimization>>(`/ai/recommendations/${id}`, { status });
       if (res.success && res.data) {
         setRecommendations(prev =>
           prev.map(r => r.id === id ? res.data! : r)

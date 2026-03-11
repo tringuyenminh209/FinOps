@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Cloud, Plus, RefreshCw, MoreVertical, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Cloud, Plus, RefreshCw, MoreVertical, CheckCircle2, XCircle, AlertCircle, X, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { formatCurrency } from '@/lib/utils';
-import { apiGet } from '@/lib/api';
+import { Select } from '@/components/ui/select';
+import { formatCurrency, cn } from '@/lib/utils';
+import { apiGet, apiPost } from '@/lib/api';
 
 interface CloudAccount {
   id: string;
@@ -40,11 +41,140 @@ const statusConfig = {
   error: { label: 'エラー', variant: 'danger' as const, icon: AlertCircle },
 };
 
+const AWS_REGIONS = [
+  { value: 'ap-northeast-1', label: '東京 (ap-northeast-1)' },
+  { value: 'ap-northeast-3', label: '大阪 (ap-northeast-3)' },
+  { value: 'us-east-1', label: 'バージニア (us-east-1)' },
+  { value: 'us-west-2', label: 'オレゴン (us-west-2)' },
+  { value: 'eu-west-1', label: 'アイルランド (eu-west-1)' },
+  { value: 'ap-southeast-1', label: 'シンガポール (ap-southeast-1)' },
+];
+
+function AddAccountModal({ open, onClose, onAdded }: { open: boolean; onClose: () => void; onAdded: () => void }) {
+  const [arnRole, setArnRole] = useState('');
+  const [externalId, setExternalId] = useState('');
+  const [region, setRegion] = useState('ap-northeast-1');
+  const [accountAlias, setAccountAlias] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  if (!open) return null;
+
+  const handleSubmit = async () => {
+    setError('');
+    if (!arnRole.trim() || arnRole.length < 20) {
+      setError('有効なARN Roleを入力してください（20文字以上）');
+      return;
+    }
+    if (!externalId.trim()) {
+      setError('External IDを入力してください');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await apiPost('/accounts', {
+        provider: 'aws',
+        arnRole,
+        externalId,
+        region,
+        accountAlias: accountAlias.trim() || undefined,
+      });
+      onAdded();
+      onClose();
+    } catch {
+      setError('アカウントの追加に失敗しました。入力内容を確認してください。');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg mx-4 rounded-2xl border border-slate-700/50 bg-slate-900 p-6 shadow-2xl animate-scale-in">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-bold text-white">AWSアカウント追加</h2>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-800 hover:text-slate-300 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-400">アカウント名（任意）</label>
+            <Input
+              placeholder="例: Production Account"
+              value={accountAlias}
+              onChange={(e) => setAccountAlias(e.target.value)}
+              icon={<Cloud className="h-4 w-4" />}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-400">IAM Role ARN <span className="text-red-400">*</span></label>
+            <Input
+              placeholder="arn:aws:iam::123456789012:role/FinOpsReadOnly"
+              value={arnRole}
+              onChange={(e) => setArnRole(e.target.value)}
+            />
+            <p className="text-xs text-slate-600">クロスアカウントアクセス用のIAM Roleを指定してください</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-400">External ID <span className="text-red-400">*</span></label>
+            <Input
+              placeholder="例: 123456789012"
+              value={externalId}
+              onChange={(e) => setExternalId(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-400">リージョン</label>
+            <Select value={region} onChange={(e) => setRegion(e.target.value)}>
+              {AWS_REGIONS.map((r) => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <Button variant="secondary" size="md" className="flex-1" onClick={onClose}>
+            キャンセル
+          </Button>
+          <Button size="md" className="flex-1" onClick={handleSubmit} disabled={loading}>
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                追加中...
+              </span>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                追加する
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<DisplayAccount[]>([]);
   const [search, setSearch] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  useEffect(() => {
+  const fetchAccounts = () => {
     apiGet<{ success: boolean; data: CloudAccount[] }>('/accounts')
       .then((res) => {
         if (res.success && res.data) {
@@ -65,7 +195,9 @@ export default function AccountsPage() {
         }
       })
       .catch(() => setAccounts([]));
-  }, []);
+  };
+
+  useEffect(() => { fetchAccounts(); }, []);
 
   const filtered = accounts.filter(
     (a) => a.alias.toLowerCase().includes(search.toLowerCase()) || a.accountId.includes(search),
@@ -81,7 +213,7 @@ export default function AccountsPage() {
           <h1 className="text-2xl font-bold text-white">クラウドアカウント</h1>
           <p className="text-sm text-slate-500 mt-1">AWS アカウントの接続管理</p>
         </div>
-        <Button size="md">
+        <Button size="md" onClick={() => setShowAddModal(true)}>
           <Plus className="h-4 w-4" />
           アカウント追加
         </Button>
@@ -117,7 +249,7 @@ export default function AccountsPage() {
           <Cloud className="h-12 w-12 text-slate-600 mb-4" />
           <p className="text-slate-400 font-medium">クラウドアカウントが接続されていません</p>
           <p className="text-slate-500 text-sm mt-1">AWSアカウントを追加してリソース管理を開始してください</p>
-          <Button size="md" className="mt-4">
+          <Button size="md" className="mt-4" onClick={() => setShowAddModal(true)}>
             <Plus className="h-4 w-4" />
             アカウント追加
           </Button>
@@ -176,6 +308,12 @@ export default function AccountsPage() {
           })}
         </div>
       )}
+
+      <AddAccountModal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAdded={fetchAccounts}
+      />
     </div>
   );
 }

@@ -77,10 +77,10 @@ export default function ApprovalsPage() {
   const [newApproval, setNewApproval] = useState({ title: '', description: '', actionType: 'stop' as ActionType, urgency: 'normal' as Urgency, estimatedCostJpy: 0 });
 
   useEffect(() => {
-    apiGet<ApiResponse<Approval[]>>('/api/v1/approvals')
+    apiGet<ApiResponse<Approval[]>>('/approvals')
       .then((res) => { if (res.success && res.data) setApprovalList(res.data); else setApprovalList([]); })
       .catch(() => setApprovalList([]));
-    apiGet<ApiResponse<ApprovalStats>>('/api/v1/approvals/stats')
+    apiGet<ApiResponse<ApprovalStats>>('/approvals/stats')
       .then((res) => { if (res.success && res.data) setStats(res.data); else setStats(ZERO_STATS); })
       .catch(() => setStats(ZERO_STATS));
   }, []);
@@ -90,7 +90,7 @@ export default function ApprovalsPage() {
   const handleRespond = async (id: string, status: 'approved' | 'rejected') => {
     setLoading(id);
     try {
-      const res = await apiPut<ApiResponse<Approval>>(`/api/v1/approvals/${id}/respond`, {
+      const res = await apiPut<ApiResponse<Approval>>(`/approvals/${id}/respond`, {
         status,
         comment: comment[id] ?? '',
       });
@@ -114,7 +114,7 @@ export default function ApprovalsPage() {
   const handleCreate = async () => {
     if (!newApproval.title || !newApproval.description) return;
     try {
-      const res = await apiPost<ApiResponse<Approval>>('/api/v1/approvals', {
+      const res = await apiPost<ApiResponse<Approval>>('/approvals', {
         ...newApproval,
         expiresInHours: 48,
       });

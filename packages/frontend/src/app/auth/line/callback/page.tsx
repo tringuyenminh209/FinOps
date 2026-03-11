@@ -48,7 +48,7 @@ function LineCallbackContent() {
 
       try {
         const redirectUri = `${window.location.origin}/auth/line/callback`;
-        const res = await apiPost<CallbackResponse>('/api/v1/auth/line-callback', {
+        const res = await apiPost<CallbackResponse>('/auth/line-callback', {
           code,
           redirectUri,
         });

@@ -47,12 +47,12 @@ costsRoutes.get('/', async (c) => {
     .select()
     .from(costCarbonHistory)
     .where(inArray(costCarbonHistory.resourceId, resourceIds))
-    .orderBy(desc(costCarbonHistory.timestamp));
+    .orderBy(desc(costCarbonHistory.recordDate));
 
   // Group by month
   const byMonth = new Map<string, number>();
   for (const entry of history) {
-    const key = entry.timestamp.toISOString().slice(0, 7); // YYYY-MM
+    const key = entry.recordDate.toISOString().slice(0, 7); // YYYY-MM
     byMonth.set(key, (byMonth.get(key) ?? 0) + entry.amountJpy);
   }
 

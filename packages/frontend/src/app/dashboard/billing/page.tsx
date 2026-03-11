@@ -55,39 +55,33 @@ const PLAN_LABELS: Record<string, string> = {
 export default function BillingPage() {
   const [invoices, setInvoices] = useState<DisplayInvoice[]>([]);
   const [org, setOrg] = useState<OrgData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiGet<{ success: boolean; data: Invoice[] }>('/billing/invoices')
-      .then((res) => {
-        if (res.success && res.data) {
-          const mapped: DisplayInvoice[] = res.data.map((inv) => ({
-            id: inv.stripeInvoiceId ?? inv.id,
-            period: `${inv.periodStart}〜${inv.periodEnd}`,
-            amount: inv.amountJpy,
-            tax: inv.taxJpy,
-            status: inv.status,
-            issuedAt: inv.issuedAt,
-          }));
-          setInvoices(mapped);
-        } else {
-          setInvoices([]);
-        }
-      })
-      .catch(() => setInvoices([]));
-
-    apiGet<{ success: boolean; data: OrgData }>('/org')
-      .then((res) => {
-        if (res.success && res.data) {
-          setOrg(res.data);
-        } else {
-          setOrg(null);
-        }
-      })
-      .catch(() => setOrg(null));
+    Promise.allSettled([
+      apiGet<{ success: boolean; data: Invoice[] }>('/billing/invoices'),
+      apiGet<{ success: boolean; data: OrgData }>('/org'),
+    ]).then(([invoicesRes, orgRes]) => {
+      if (invoicesRes.status === 'fulfilled' && invoicesRes.value.success && invoicesRes.value.data) {
+        const mapped: DisplayInvoice[] = invoicesRes.value.data.map((inv) => ({
+          id: inv.stripeInvoiceId ?? inv.id,
+          period: `${inv.periodStart}〜${inv.periodEnd}`,
+          amount: inv.amountJpy,
+          tax: inv.taxJpy,
+          status: inv.status,
+          issuedAt: inv.issuedAt,
+        }));
+        setInvoices(mapped);
+      }
+      if (orgRes.status === 'fulfilled' && orgRes.value.success && orgRes.value.data) {
+        setOrg(orgRes.value.data);
+      }
+      setLoading(false);
+    });
   }, []);
 
   const totalPaid = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.amount + i.tax, 0);
-  const planName = org ? (PLAN_LABELS[org.planType] ?? org.planType) : '読み込み中...';
+  const planName = loading ? '読み込み中...' : org ? (PLAN_LABELS[org.planType] ?? org.planType) : 'プランなし';
 
   return (
     <div className="space-y-6">

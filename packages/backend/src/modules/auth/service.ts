@@ -189,6 +189,14 @@ export function verifyPassword(password: string, stored: string): boolean {
   return hashBuf.length === derived.length && timingSafeEqual(hashBuf, derived);
 }
 
+// ── メール重複チェック ──
+export async function checkEmailExists(email: string): Promise<boolean> {
+  const rows = await db.execute<{ id: string }>(
+    sql`SELECT id FROM users WHERE email = ${email} LIMIT 1`,
+  );
+  return rows.length > 0;
+}
+
 // ── メール登録 ──
 export async function registerWithEmail(data: {
   email: string;

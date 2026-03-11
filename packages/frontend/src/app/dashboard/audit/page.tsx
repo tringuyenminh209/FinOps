@@ -58,7 +58,7 @@ export default function AuditPage() {
   const [targetFilter, setTargetFilter] = useState('all');
 
   useEffect(() => {
-    apiGet<ApiResponse<AuditEntry[]>>('/api/v1/org/audit')
+    apiGet<ApiResponse<AuditEntry[]>>('/org/audit')
       .then((res) => { if (res.success && res.data) setEntries(res.data); else setEntries([]); })
       .catch(() => setEntries([]));
   }, []);

@@ -19,21 +19,11 @@ orgRoutes.use('*', tenantMiddleware);
 orgRoutes.get('/', async (c) => {
   const org = c.get('org');
 
-  const [memberCount] = await db
-    .select({ count: count() })
-    .from(users)
-    .where(eq(users.orgId, org.id));
-
-  const [accountCount] = await db
-    .select({ count: count() })
-    .from(cloudAccounts)
-    .where(eq(cloudAccounts.orgId, org.id));
-
-  const lineConfig = await db
-    .select()
-    .from(lineConfigs)
-    .where(eq(lineConfigs.orgId, org.id))
-    .limit(1);
+  const [[memberCount], [accountCount], lineConfig] = await Promise.all([
+    db.select({ count: count() }).from(users).where(eq(users.orgId, org.id)),
+    db.select({ count: count() }).from(cloudAccounts).where(eq(cloudAccounts.orgId, org.id)),
+    db.select().from(lineConfigs).where(eq(lineConfigs.orgId, org.id)).limit(1),
+  ]);
 
   return c.json({
     success: true,

@@ -28,7 +28,7 @@ export default function ResourcesPage() {
   const [typeFilter, setTypeFilter] = useState('all');
 
   useEffect(() => {
-    apiGet<ApiResponse<{ resources: any[]; total: number }>>('/api/v1/resources')
+    apiGet<ApiResponse<{ resources: any[]; total: number }>>('/resources')
       .then((res) => {
         if (res.success && res.data && res.data.resources.length > 0) {
           const mapped = res.data.resources.map((r: any) => ({

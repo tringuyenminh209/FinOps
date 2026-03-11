@@ -79,7 +79,7 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    apiGet<ApiResponse<any>>('/api/v1/org')
+    apiGet<ApiResponse<any>>('/org')
       .then((res) => {
         if (res.success && res.data) {
           const d = res.data;
@@ -100,7 +100,7 @@ export default function SettingsPage() {
       })
       .catch(() => {/* keep defaults */});
 
-    apiGet<ApiResponse<any>>('/api/v1/org/settings')
+    apiGet<ApiResponse<any>>('/org/settings')
       .then((res) => {
         if (res.success && res.data) {
           const s = res.data;
@@ -126,7 +126,7 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     try {
-      await apiPut('/api/v1/org/settings', {
+      await apiPut('/org/settings', {
         notifications: {
           costAlertThresholdJpy: notify.costAlertThresholdJpy,
           weeklyReportEnabled: notify.weeklyReportEnabled,

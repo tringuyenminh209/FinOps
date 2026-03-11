@@ -81,7 +81,7 @@ export async function calculateGreenScore(orgId: string): Promise<GreenScore> {
     .innerJoin(cloudAccounts, eq(resources.cloudAccountId, cloudAccounts.id))
     .where(and(
       eq(cloudAccounts.orgId, orgId),
-      between(costCarbonHistory.timestamp, currentMonthStart, currentMonthEnd),
+      between(costCarbonHistory.recordDate, currentMonthStart, currentMonthEnd),
     ));
 
   const [prevResult] = await db
@@ -91,7 +91,7 @@ export async function calculateGreenScore(orgId: string): Promise<GreenScore> {
     .innerJoin(cloudAccounts, eq(resources.cloudAccountId, cloudAccounts.id))
     .where(and(
       eq(cloudAccounts.orgId, orgId),
-      between(costCarbonHistory.timestamp, prevMonthStart, prevMonthEnd),
+      between(costCarbonHistory.recordDate, prevMonthStart, prevMonthEnd),
     ));
 
   const totalCarbonKg = Number(currentResult?.total) || 0;
@@ -134,7 +134,7 @@ export async function generateGreenReport(orgId: string, month: string): Promise
     .innerJoin(cloudAccounts, eq(resources.cloudAccountId, cloudAccounts.id))
     .where(and(
       eq(cloudAccounts.orgId, orgId),
-      between(costCarbonHistory.timestamp, monthStart, monthEnd),
+      between(costCarbonHistory.recordDate, monthStart, monthEnd),
     ))
     .groupBy(cloudAccounts.region, cloudAccounts.provider);
 
@@ -148,7 +148,7 @@ export async function generateGreenReport(orgId: string, month: string): Promise
     .innerJoin(cloudAccounts, eq(resources.cloudAccountId, cloudAccounts.id))
     .where(and(
       eq(cloudAccounts.orgId, orgId),
-      between(costCarbonHistory.timestamp, monthStart, monthEnd),
+      between(costCarbonHistory.recordDate, monthStart, monthEnd),
     ));
 
   const totalCostJpy = Number(costResult?.total) || 0;

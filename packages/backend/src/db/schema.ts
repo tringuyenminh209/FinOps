@@ -102,7 +102,8 @@ export const costCarbonHistory = pgTable('cost_carbon_history', {
   powerKwh: real('power_kwh'),
   emissionFactorSource: varchar('emission_factor_source', { length: 100 }),
   emissionFactor: real('emission_factor'),
-  timestamp: timestamp('timestamp').defaultNow().notNull(),
+  recordDate: timestamp('record_date').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
   index('idx_cost_carbon_resource_id').on(table.resourceId),
 ]);

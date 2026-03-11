@@ -10,6 +10,8 @@ import {
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/use-auth';
+import { useEffect, useState } from 'react';
+import { apiGet } from '@/lib/api';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -37,6 +39,13 @@ const navItems = [
 export function Sidebar({ collapsed, mobileOpen, onToggle, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
   const { logout, user } = useAuth();
+  const [planType, setPlanType] = useState<string>('free');
+
+  useEffect(() => {
+    apiGet<{ success: boolean; data: { planType: string } }>('/org')
+      .then((res) => { if (res.success && res.data?.planType) setPlanType(res.data.planType); })
+      .catch(() => {});
+  }, []);
 
   const sidebarContent = (
     <div className="flex h-full flex-col">
@@ -84,11 +93,13 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onCloseMobile }: Side
         <div className="border-t border-slate-700/30 px-4 py-4">
           <div className="glass-subtle rounded-xl p-3">
             <div className="flex items-center gap-2 mb-1">
-              <Shield className="h-4 w-4 text-emerald-400" />
-              <span className="text-xs font-medium text-slate-300">Pro プラン</span>
+              <Shield className={cn('h-4 w-4', planType === 'free' ? 'text-slate-400' : 'text-emerald-400')} />
+              <span className="text-xs font-medium text-slate-300">
+                {planType === 'enterprise' ? 'Enterprise' : planType === 'pro' ? 'Pro' : 'Free'} プラン
+              </span>
             </div>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              全機能アクセス可能
+              {planType === 'free' ? '基本機能のみ' : planType === 'pro' ? '全機能アクセス可能' : 'カスタム対応'}
             </p>
           </div>
         </div>

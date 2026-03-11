@@ -70,8 +70,8 @@ export default function GreenOpsPage() {
     setLoading(true);
     try {
       const [reportsRes, scoreRes] = await Promise.all([
-        apiGet<ApiResponse<GreenReport[]>>('/api/v1/carbon/report?limit=12'),
-        apiGet<ApiResponse<GreenScore>>('/api/v1/carbon/green-score'),
+        apiGet<ApiResponse<GreenReport[]>>('/carbon/report?limit=12'),
+        apiGet<ApiResponse<GreenScore>>('/carbon/green-score'),
       ]);
 
       if (reportsRes.success && reportsRes.data) {
@@ -95,8 +95,8 @@ export default function GreenOpsPage() {
   const handleCalculate = async () => {
     setCalculating(true);
     try {
-      await apiPost('/api/v1/carbon/calculate', {});
-      await apiPost('/api/v1/carbon/report/generate', { month: new Date().toISOString().slice(0, 7) });
+      await apiPost('/carbon/calculate', {});
+      await apiPost('/carbon/report/generate', { month: new Date().toISOString().slice(0, 7) });
       await fetchData();
     } catch (err) {
       console.error('Calculate error:', err);

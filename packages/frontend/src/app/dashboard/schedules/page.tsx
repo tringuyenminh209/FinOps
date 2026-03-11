@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, Plus, Play, Pause, Moon, Sun } from 'lucide-react';
+import { Clock, Plus, Play, Pause, Moon, Sun, X, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { cn, formatCurrency } from '@/lib/utils';
-import { apiGet } from '@/lib/api';
+import { apiGet, apiPost } from '@/lib/api';
 
 const dayLabels = ['月', '火', '水', '木', '金', '土', '日'];
 
@@ -78,11 +80,135 @@ function TimelineBar({ stopTime, startTime }: { stopTime: string; startTime: str
   );
 }
 
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6]; // 月〜日
+
+function AddScheduleModal({ open, onClose, onAdded }: { open: boolean; onClose: () => void; onAdded: () => void }) {
+  const [resourcesList, setResourcesList] = useState<{ id: string; name: string }[]>([]);
+  const [resourceId, setResourceId] = useState('');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('18:00');
+  const [days, setDays] = useState<number[]>([0, 1, 2, 3, 4]); // 月〜金
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    apiGet<{ success: boolean; data: { resources: any[]; total: number } }>('/resources')
+      .then((res) => {
+        if (res.success && res.data?.resources) {
+          setResourcesList(res.data.resources.map((r: any) => ({ id: r.id, name: r.name || r.externalId })));
+        }
+      })
+      .catch(() => {});
+  }, [open]);
+
+  if (!open) return null;
+
+  const toggleDay = (d: number) => {
+    setDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort());
+  };
+
+  const handleSubmit = async () => {
+    setError('');
+    if (!resourceId) { setError('リソースを選択してください'); return; }
+    if (days.length === 0) { setError('少なくとも1日選択してください'); return; }
+
+    setLoading(true);
+    try {
+      await apiPost('/schedules', { resourceId, startTimeJst: startTime, endTimeJst: endTime, daysOfWeek: days });
+      onAdded();
+      onClose();
+    } catch {
+      setError('スケジュールの追加に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg mx-4 rounded-2xl border border-slate-700/50 bg-slate-900 p-6 shadow-2xl animate-scale-in">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-bold text-white">スケジュール追加</h2>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-800 hover:text-slate-300 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">{error}</div>
+        )}
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-400">リソース <span className="text-red-400">*</span></label>
+            <Select value={resourceId} onChange={(e) => setResourceId(e.target.value)}>
+              <option value="">選択してください</option>
+              {resourcesList.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400 flex items-center gap-1">
+                <Sun className="h-3.5 w-3.5 text-amber-400" /> 起動時間 (JST)
+              </label>
+              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400 flex items-center gap-1">
+                <Moon className="h-3.5 w-3.5 text-indigo-400" /> 停止時間 (JST)
+              </label>
+              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-400">実行曜日</label>
+            <div className="flex items-center gap-1.5">
+              {dayLabels.map((label, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => toggleDay(i)}
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded-lg text-xs font-medium transition-colors',
+                    days.includes(i)
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-slate-800/40 text-slate-600 border border-slate-700/30 hover:border-slate-600',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <Button variant="secondary" size="md" className="flex-1" onClick={onClose}>キャンセル</Button>
+          <Button size="md" className="flex-1" onClick={handleSubmit} disabled={loading}>
+            {loading ? (
+              <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />追加中...</span>
+            ) : (
+              <><Plus className="h-4 w-4" />追加する</>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SchedulesPage() {
   const [schedules, setSchedules] = useState<DisplaySchedule[]>([]);
   const [filter, setFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  useEffect(() => {
+  const fetchSchedules = () => {
     apiGet<{ success: boolean; data: ApiSchedule[] }>('/schedules')
       .then((res) => {
         if (res.success && res.data) {
@@ -103,7 +229,9 @@ export default function SchedulesPage() {
         }
       })
       .catch(() => setSchedules([]));
-  }, []);
+  };
+
+  useEffect(() => { fetchSchedules(); }, []);
 
   const filtered = schedules.filter((s) => {
     if (filter === 'enabled') return s.enabled;
@@ -123,7 +251,7 @@ export default function SchedulesPage() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">リソースの自動停止・起動スケジュール管理</p>
         </div>
-        <Button size="md">
+        <Button size="md" onClick={() => setShowAddModal(true)}>
           <Plus className="h-4 w-4" />
           スケジュール追加
         </Button>
@@ -169,7 +297,7 @@ export default function SchedulesPage() {
           <Moon className="h-12 w-12 text-slate-600 mb-4" />
           <p className="text-slate-400 font-medium">スケジュールがありません</p>
           <p className="text-slate-500 text-sm mt-1">リソースの自動停止・起動スケジュールを追加してください</p>
-          <Button size="md" className="mt-4">
+          <Button size="md" className="mt-4" onClick={() => setShowAddModal(true)}>
             <Plus className="h-4 w-4" />
             スケジュール追加
           </Button>
@@ -249,6 +377,12 @@ export default function SchedulesPage() {
           ))}
         </div>
       )}
+
+      <AddScheduleModal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAdded={fetchSchedules}
+      />
     </div>
   );
 }

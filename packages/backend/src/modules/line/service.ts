@@ -229,12 +229,12 @@ export async function generateWeeklyReport(orgId: string): Promise<WeeklyReport>
   const currentCosts = await db
     .select({ total: sql<number>`COALESCE(SUM(${costCarbonHistory.amountJpy}), 0)` })
     .from(costCarbonHistory)
-    .where(between(costCarbonHistory.timestamp, periodStart, periodEnd));
+    .where(between(costCarbonHistory.recordDate, periodStart, periodEnd));
 
   const prevCosts = await db
     .select({ total: sql<number>`COALESCE(SUM(${costCarbonHistory.amountJpy}), 0)` })
     .from(costCarbonHistory)
-    .where(between(costCarbonHistory.timestamp, prevStart, periodStart));
+    .where(between(costCarbonHistory.recordDate, prevStart, periodStart));
 
   const totalCostJpy = Number(currentCosts[0]?.total) || 0;
   const previousCostJpy = Number(prevCosts[0]?.total) || 0;
