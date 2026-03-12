@@ -5,10 +5,11 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Cloud, Server, Clock, TrendingDown, CreditCard,
   Bell, FileText, Settings, Leaf, Sparkles, CheckSquare, ScrollText,
-  ChevronLeft, ChevronRight, X, Shield, Zap, LogOut,
+  ChevronLeft, ChevronRight, X, Shield, LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Logo } from '@/components/ui/logo';
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState } from 'react';
 import { apiGet } from '@/lib/api';
@@ -50,14 +51,11 @@ export function Sidebar({ collapsed, mobileOpen, onToggle, onCloseMobile }: Side
   const sidebarContent = (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 px-4 border-b border-slate-700/30">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-600/20">
-          <Zap className="h-5 w-5 text-white" />
-        </div>
-        {!collapsed && (
-          <span className="text-lg font-bold tracking-tight text-white animate-fade-in">
-            FinOps
-          </span>
+      <div className="flex min-h-[72px] items-center justify-center px-4 py-3 border-b border-slate-700/30">
+        {collapsed ? (
+          <Logo full={false} />
+        ) : (
+          <Logo full className="w-full animate-fade-in" />
         )}
       </div>
 

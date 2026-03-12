@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" fill="none">
+  <!-- Dark background (for preview) -->
+  <rect width="240" height="64" fill="#0f172a"/>
+
+  <!-- Top rule — emerald, thin -->
+  <line x1="16" y1="14" x2="224" y2="14" stroke="#10b981" stroke-width="0.75"/>
+
+  <!-- FIN — white, ultra-thin -->
+  <text
+    x="16" y="43"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="26"
+    font-weight="200"
+    letter-spacing="8"
+    fill="#f8fafc">FIN</text>
+
+  <!-- Vertical divider — emerald -->
+  <line x1="107" y1="20" x2="107" y2="47" stroke="#10b981" stroke-width="0.75"/>
+
+  <!-- OPS — emerald, ultra-thin -->
+  <text
+    x="115" y="43"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="26"
+    font-weight="200"
+    letter-spacing="8"
+    fill="#10b981">OPS</text>
+
+  <!-- Bottom rule — slate -->
+  <line x1="16" y1="52" x2="224" y2="52" stroke="#334155" stroke-width="0.5"/>
+
+  <!-- Micro tagline -->
+  <text
+    x="16" y="62"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="6.5"
+    font-weight="400"
+    letter-spacing="2.5"
+    fill="#475569">CLOUD COST OPTIMIZATION</text>
+</svg>

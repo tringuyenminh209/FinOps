@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import {
-  Zap, Moon, Leaf, Brain, Shield, FileText, Lock,
+  Moon, Leaf, Brain, Shield, FileText, Lock,
   ArrowRight, ChevronRight, CheckCircle2, Building2, TrendingDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Logo } from '@/components/ui/logo';
 
 const features = [
   {
@@ -57,12 +58,7 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="sticky top-0 z-50 border-b border-slate-700/30 bg-slate-900/60 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl flex items-center justify-between px-6 h-16">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-600/20">
-              <Zap className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg font-bold tracking-tight text-white">FinOps</span>
-          </div>
+          <Logo full className="w-36" />
           <div className="hidden md:flex items-center gap-8 text-sm text-slate-400">
             <a href="#features" className="hover:text-white transition-colors">機能</a>
             <a href="#results" className="hover:text-white transition-colors">導入実績</a>
@@ -332,9 +328,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
-                  <Zap className="h-4 w-4 text-white" />
-                </div>
+                <Logo full={false} />
                 <span className="text-sm font-bold text-white">FinOps</span>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed">
